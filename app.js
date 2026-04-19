@@ -454,7 +454,7 @@ function renderLineChart(submissions) {
         legend: {
           position: 'bottom',
           labels: {
-            font: { family: 'Quicksand', size: 12 },
+            font: { family: 'Nunito', size: 12 },
             color: '#9D174D',
             padding: 16,
             boxWidth: 14,
@@ -475,12 +475,12 @@ function renderLineChart(submissions) {
       scales: {
         x: {
           grid: { color: '#FDF2F8' },
-          ticks: { font: { family: 'Quicksand', size: 10 }, color: '#C4859E' }
+          ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E' }
         },
         y: {
           min: 0, max: 10,
           grid: { color: '#FDF2F8' },
-          ticks: { font: { family: 'Quicksand', size: 10 }, color: '#C4859E', stepSize: 2 }
+          ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E', stepSize: 2 }
         }
       }
     }
@@ -513,7 +513,7 @@ function renderRadarChart(last) {
       plugins: {
         legend: {
           labels: {
-            font: { family: 'Quicksand', size: 11 },
+            font: { family: 'Nunito', size: 11 },
             color: '#9D174D',
           }
         }
@@ -523,13 +523,13 @@ function renderRadarChart(last) {
           min: 0, max: 10,
           ticks: {
             stepSize: 2,
-            font: { family: 'Quicksand', size: 9 },
+            font: { family: 'Nunito', size: 9 },
             color: '#C4859E',
             backdropColor: 'transparent'
           },
           grid:        { color: '#FBCFE8' },
           angleLines:  { color: '#FBCFE8' },
-          pointLabels: { font: { family: 'Quicksand', size: 11 }, color: '#9D174D' }
+          pointLabels: { font: { family: 'Nunito', size: 11 }, color: '#9D174D' }
         }
       }
     }
