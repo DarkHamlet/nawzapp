@@ -33,7 +33,7 @@
 html { font-size: 16px; scroll-behavior: smooth; }
 
 body {
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   background: var(--pink-pale);
   color: var(--text);
   min-height: 100dvh;
@@ -41,7 +41,7 @@ body {
 }
 
 /* ── Typography ─────────────────────────────────────────── */
-h1, h2, h3 { font-family: 'Comfortaa', cursive; line-height: 1.3; font-weight: 700; }
+h1, h2, h3 { font-family: 'Pacifico', cursive; line-height: 1.3; font-weight: 700; }
 p { line-height: 1.6; }
 a { color: var(--pink-deep); text-decoration: none; }
 
@@ -65,7 +65,7 @@ a { color: var(--pink-deep); text-decoration: none; }
   gap: 6px;
   padding: 12px 22px;
   border-radius: 50px;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -101,7 +101,7 @@ a { color: var(--pink-deep); text-decoration: none; }
   padding: 8px 16px;
   border-radius: 50px;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-weight: 600;
   transition: all var(--transition);
   -webkit-tap-highlight-color: transparent;
@@ -112,7 +112,7 @@ a { color: var(--pink-deep); text-decoration: none; }
   background: none;
   border: none;
   color: var(--text-soft);
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.85rem;
   cursor: pointer;
   padding: 4px 8px;
@@ -139,7 +139,7 @@ a { color: var(--pink-deep); text-decoration: none; }
   padding: 12px 14px;
   border: 2px solid var(--pink-light);
   border-radius: var(--radius-sm);
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   font-size: 0.9rem;
   color: var(--text);
   background: var(--white);
@@ -170,7 +170,7 @@ a { color: var(--pink-deep); text-decoration: none; }
 /* ── Helpers ────────────────────────────────────────────── */
 .hidden { display: none !important; }
 .section-label {
-  font-family: 'Comfortaa', cursive;
+  font-family: 'Pacifico', cursive;
   font-size: 1rem;
   font-style: italic;
   color: var(--text-mid);
@@ -206,7 +206,7 @@ a { color: var(--pink-deep); text-decoration: none; }
 }
 
 .logo-name {
-  font-family: 'Comfortaa', cursive;
+  font-family: 'Pacifico', cursive;
   font-size: 2.4rem;
   color: var(--pink-deep);
   letter-spacing: -0.5px;
@@ -373,7 +373,7 @@ a { color: var(--pink-deep); text-decoration: none; }
   background: transparent;
   font-size: 0.72rem;
   font-weight: 700;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Quicksand', sans-serif;
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
@@ -488,7 +488,7 @@ a { color: var(--pink-deep); text-decoration: none; }
 }
 .score-mini-icon { font-size: 1.4rem; }
 .score-mini-name { font-size: 0.68rem; font-weight: 600; color: var(--text-soft); text-align: center; line-height: 1.3; }
-.score-mini-val { font-size: 1.5rem; font-weight: 700; font-family: 'Comfortaa', cursive; }
+.score-mini-val { font-size: 1.5rem; font-weight: 700; font-family: 'Pacifico', cursive; }
 
 .overall-bubble {
   display: flex;
@@ -502,7 +502,7 @@ a { color: var(--pink-deep); text-decoration: none; }
   box-shadow: 0 6px 24px rgba(244,114,182,0.4);
   color: var(--white);
 }
-.overall-val { font-size: 2.2rem; font-weight: 700; font-family: 'Comfortaa', cursive; line-height: 1; }
+.overall-val { font-size: 2.2rem; font-weight: 700; font-family: 'Pacifico', cursive; line-height: 1; }
 .overall-lbl { font-size: 0.62rem; font-weight: 600; opacity: 0.9; letter-spacing: 0.5px; }
 
 .thanks-actions {
@@ -573,7 +573,7 @@ a { color: var(--pink-deep); text-decoration: none; }
 .dac-icon { font-size: 1.8rem; }
 .dac-info { flex: 1; }
 .dac-name { font-size: 0.72rem; font-weight: 600; opacity: 0.75; line-height: 1.3; }
-.dac-score { font-size: 1.7rem; font-weight: 700; font-family: 'Comfortaa', cursive; line-height: 1; }
+.dac-score { font-size: 1.7rem; font-weight: 700; font-family: 'Pacifico', cursive; line-height: 1; }
 .dac-trend { font-size: 0.7rem; font-weight: 500; opacity: 0.65; margin-top: 1px; }
 
 /* Chart cards */
