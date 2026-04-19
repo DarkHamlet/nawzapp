@@ -6,7 +6,7 @@
 'use strict';
 
 /* ── Contraseña ──────────────────────────────────────────── */
-const SECRET_PASS = 'teamogato';
+const SECRET_PASS = 'teamogat@';
 
 /* ── Estructura de áreas y preguntas ────────────────────── */
 const AREAS = [
@@ -162,7 +162,6 @@ document.querySelectorAll('.role-btn').forEach(btn => {
 document.getElementById('login-form').addEventListener('submit', function (e) {
   e.preventDefault();
   const name  = document.getElementById('inp-name').value.trim();
-  const email = document.getElementById('inp-email').value.trim();
   const pass  = document.getElementById('inp-pass').value;
   const passErr = document.getElementById('login-error');
   const roleErr = document.getElementById('role-error');
@@ -180,7 +179,7 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
     return;
   }
   passErr.classList.add('hidden');
-  state.user = { name, email, role: selectedRole };
+  state.user = { name, role: selectedRole };
   state.currentArea = 0;
   state.answers = {};
   startSurvey();
@@ -360,7 +359,6 @@ function submitSurvey() {
     date:       new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' }),
     dateISO:    new Date().toISOString().split('T')[0],
     name:       state.user.name,
-    email:      state.user.email,
     role:       state.user.role,
     answers:    JSON.parse(JSON.stringify(state.answers)),
     areaScores,
