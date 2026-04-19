@@ -394,72 +394,81 @@ function showThanks(submission) {
 }
 
 /* ── DASHBOARD ───────────────────────────────────────────── */
-let dashFilter = { role: 'all', area: 'global' };
+/* roles: array de roles activos, e.g. ['ella','el'] | ['ella'] | ['el'] */
+let dashFilter = { roles: ['ella', 'el'], area: 'global' };
 
 function renderDashboard() {
   const all = loadSubmissions();
-
   if (all.length === 0) {
     document.getElementById('dash-empty').classList.remove('hidden');
     document.getElementById('dash-content').classList.add('hidden');
     return;
   }
-
   document.getElementById('dash-empty').classList.add('hidden');
   document.getElementById('dash-content').classList.remove('hidden');
-
   renderHistTable(all);
+  syncFilterButtons();
   rerenderDashboardCharts();
 }
 
+/* Cambio de área */
 function applyDashFilter(changes) {
-  Object.assign(dashFilter, changes);
+  if (changes.area !== undefined) dashFilter.area = changes.area;
+  syncFilterButtons();
+  rerenderDashboardCharts();
+}
 
-  /* Sincronizar botones de área */
+/* Toggle independiente de rol */
+function toggleRoleFilter(role) {
+  if (dashFilter.roles.includes(role)) {
+    if (dashFilter.roles.length > 1) {
+      dashFilter.roles = dashFilter.roles.filter(r => r !== role);
+    }
+    /* Si es el último activo, no lo desactiva */
+  } else {
+    dashFilter.roles = [...dashFilter.roles, role];
+  }
+  syncFilterButtons();
+  rerenderDashboardCharts();
+}
+
+function syncFilterButtons() {
   document.querySelectorAll('#filter-area .filter-btn').forEach(btn =>
     btn.classList.toggle('active', btn.dataset.area === dashFilter.area)
   );
-  /* Sincronizar botones de rol */
   document.querySelectorAll('#filter-role .filter-btn').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.role === dashFilter.role)
+    btn.classList.toggle('active', dashFilter.roles.includes(btn.dataset.role))
   );
-
-  rerenderDashboardCharts();
 }
 
 function rerenderDashboardCharts() {
-  /* Destruir gráficas anteriores */
   ['chart-line', 'chart-radar'].forEach(id => {
     if (state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
   });
 
-  const all  = loadSubmissions();
-  const role = dashFilter.role;
-  const area = dashFilter.area;
+  const all   = loadSubmissions();
+  const roles = dashFilter.roles;
+  const area  = dashFilter.area;
 
-  /* Submissions filtradas por rol para cards y radar */
-  const byRole = role === 'all' ? all : all.filter(s => (s.role ?? 'ella') === role);
-  if (byRole.length === 0) return;
+  const byRoles = all.filter(s => roles.includes(s.role ?? 'ella'));
+  if (byRoles.length === 0) return;
 
-  const last = byRole[byRole.length - 1];
+  const last = byRoles[byRoles.length - 1];
 
-  /* Etiqueta dinámica del gráfico */
-  const areaObj   = AREAS.find(a => a.id === area);
-  const areaName  = area === 'global' ? 'Global' : areaObj?.title ?? area;
-  const roleLabel = role === 'el' ? '💙 Él' : role === 'ella' ? '💗 Ella' : '👫 Ambos';
+  const areaObj  = AREAS.find(a => a.id === area);
+  const areaName = area === 'global' ? 'Global' : areaObj?.title ?? area;
+  const rolesLabel = roles.length === 2
+    ? '💗 Ella  &  💙 Él'
+    : roles[0] === 'el' ? '💙 Él' : '💗 Ella';
+
   document.getElementById('chart-line-label').textContent =
-    `El pulso de nuestra relación — ${areaName} · ${roleLabel}`;
-
-  /* Fecha última encuesta */
+    `El pulso de nuestra relación — ${areaName}`;
   document.getElementById('dash-last-date').textContent =
-    `${roleLabel} · Última encuesta: ${last.date} — ${last.name}`;
+    `${rolesLabel} · Última encuesta: ${last.date} — ${last.name}`;
 
-  /* Cards de área y radar usan el último del rol filtrado */
-  renderAreaCards(last, byRole);
+  renderAreaCards(last, byRoles);
   renderRadarChart(last);
-
-  /* Gráfica de línea: cruzada Área × Rol */
-  renderLineChartFiltered(all, role, area);
+  renderLineChartFiltered(all, roles, area);
 }
 
 /* ─── Cards de área ─────────────────────────────────────── */
@@ -522,50 +531,48 @@ function lineChartOptions() {
   };
 }
 
-/* ─── Gráfica de línea cruzada: Área × Rol ──────────────── */
-function renderLineChartFiltered(all, role, area) {
-  const ellaData = all.filter(s => (s.role ?? 'ella') === 'ella');
-  const elData   = all.filter(s => s.role === 'el');
+/* ─── Gráfica de línea cruzada: Área × Roles[] ──────────── */
+function renderLineChartFiltered(all, roles, area) {
+  const areaName = area === 'global'
+    ? 'Global'
+    : AREAS.find(a => a.id === area)?.title ?? area;
 
-  const areaObj  = AREAS.find(a => a.id === area);
-  const areaName = area === 'global' ? 'Global' : areaObj?.title ?? area;
+  const ROLE_CFG = {
+    ella: { label: '💗 Ella', color: '#F472B6', bg: 'rgba(244,114,182,0.1)',  fill: 'rgba(244,114,182,0.12)' },
+    el:   { label: '💙 Él',   color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',   fill: 'rgba(96,165,250,0.12)'  },
+  };
 
-  let datasets, labels;
+  const datasets = [];
+  let labels;
 
-  if (role === 'all') {
-    /* Ambos roles — dos líneas con fechas fusionadas */
+  if (roles.length === 2) {
+    /* Ambos activos — fechas fusionadas */
     const allDates = [...new Set(all.map(s => s.dateISO))].sort();
-    const scoresByDate = (subs) => allDates.map(d => {
-      const m = subs.find(s => s.dateISO === d);
-      return m ? getScoreForArea(m, area) : null;
+    labels = allDates;
+    roles.forEach(role => {
+      const subs = all.filter(s => (s.role ?? 'ella') === role);
+      const cfg  = ROLE_CFG[role];
+      datasets.push({
+        label: `${cfg.label} — ${areaName}`,
+        data:  allDates.map(d => { const m = subs.find(s => s.dateISO === d); return m ? getScoreForArea(m, area) : null; }),
+        borderColor: cfg.color, backgroundColor: cfg.bg,
+        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
+        pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: cfg.color
+      });
     });
-    labels   = allDates;
-    datasets = [
-      { label: `💗 Ella — ${areaName}`,
-        data: scoresByDate(ellaData),
-        borderColor: '#F472B6', backgroundColor: 'rgba(244,114,182,0.1)',
-        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
-        pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#F472B6' },
-      { label: `💙 Él — ${areaName}`,
-        data: scoresByDate(elData),
-        borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.1)',
-        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
-        pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#60A5FA' },
-    ];
   } else {
-    /* Un solo rol */
-    const subs    = role === 'el' ? elData : ellaData;
-    const color   = role === 'el' ? '#60A5FA' : '#F472B6';
-    const bgColor = role === 'el' ? 'rgba(96,165,250,0.12)' : 'rgba(244,114,182,0.12)';
-    const icon    = role === 'el' ? '💙 Él' : '💗 Ella';
-    labels   = subs.map(s => s.dateISO);
-    datasets = [{
-      label: `${icon} — ${areaName}`,
-      data: subs.map(s => getScoreForArea(s, area)),
-      borderColor: color, backgroundColor: bgColor,
+    /* Un solo rol activo */
+    const role = roles[0];
+    const subs = all.filter(s => (s.role ?? 'ella') === role);
+    const cfg  = ROLE_CFG[role];
+    labels = subs.map(s => s.dateISO);
+    datasets.push({
+      label: `${cfg.label} — ${areaName}`,
+      data:  subs.map(s => getScoreForArea(s, area)),
+      borderColor: cfg.color, backgroundColor: cfg.fill,
       borderWidth: 3, tension: 0.35, fill: true, spanGaps: false,
-      pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: color
-    }];
+      pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: cfg.color
+    });
   }
 
   const ctx = document.getElementById('chart-line').getContext('2d');
