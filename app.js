@@ -394,18 +394,12 @@ function showThanks(submission) {
 }
 
 /* ── DASHBOARD ───────────────────────────────────────────── */
+let dashFilter = 'all';
+
 function renderDashboard() {
-  const submissions = loadSubmissions();
+  const all = loadSubmissions();
 
-  /* Destruir gráficas anteriores para evitar conflictos */
-  ['chart-line', 'chart-radar'].forEach(id => {
-    if (state.charts[id]) {
-      state.charts[id].destroy();
-      delete state.charts[id];
-    }
-  });
-
-  if (submissions.length === 0) {
+  if (all.length === 0) {
     document.getElementById('dash-empty').classList.remove('hidden');
     document.getElementById('dash-content').classList.add('hidden');
     return;
@@ -414,23 +408,45 @@ function renderDashboard() {
   document.getElementById('dash-empty').classList.add('hidden');
   document.getElementById('dash-content').classList.remove('hidden');
 
-  const last = submissions[submissions.length - 1];
+  renderHistTable(all);
+  applyDashFilter(dashFilter);
+}
 
-  /* Fecha última encuesta */
+function applyDashFilter(filter) {
+  dashFilter = filter;
+
+  /* Actualizar botones */
+  document.querySelectorAll('.filter-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.filter === filter)
+  );
+
+  /* Destruir gráficas anteriores */
+  ['chart-line', 'chart-radar'].forEach(id => {
+    if (state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
+  });
+
+  const all      = loadSubmissions();
+  const filtered = filter === 'all' ? all : all.filter(s => (s.role ?? 'ella') === filter);
+
+  if (filtered.length === 0) return;
+
+  const last = filtered[filtered.length - 1];
+
+  /* Fecha última encuesta (del rol filtrado) */
+  const roleLabel = filter === 'el' ? '💙 Él' : filter === 'ella' ? '💗 Ella' : '👫 Todos';
   document.getElementById('dash-last-date').textContent =
-    `Última encuesta: ${last.date} · ${last.name}`;
+    `${roleLabel} · Última encuesta: ${last.date} — ${last.name}`;
 
-  /* Área cards */
-  renderAreaCards(last, submissions);
+  /* Cards de área */
+  renderAreaCards(last, filtered);
 
-  /* Gráfica de línea — evolución global */
-  renderLineChart(submissions);
-
-  /* Gráfica de radar — última encuesta por área */
+  /* Gráficas */
+  if (filter === 'all') {
+    renderLineChartDual(all);
+  } else {
+    renderLineChart(filtered, filter);
+  }
   renderRadarChart(last);
-
-  /* Tabla historial */
-  renderHistTable(submissions);
 }
 
 /* ─── Cards de área ─────────────────────────────────────── */
@@ -464,82 +480,90 @@ function renderAreaCards(last, submissions) {
   }).join('');
 }
 
-/* ─── Gráfica de línea ──────────────────────────────────── */
-function renderLineChart(submissions) {
-  const labels = submissions.map(s => s.dateISO);
-  const data   = submissions.map(s => s.overall);
+/* ─── Opciones base de gráfica de línea ─────────────────── */
+function lineChartOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { font: { family: 'Nunito', size: 12 }, color: '#9D174D', padding: 16, boxWidth: 14, usePointStyle: true }
+      },
+      tooltip: {
+        backgroundColor: '#FDF2F8', titleColor: '#831843', bodyColor: '#9D174D',
+        borderColor: '#FBCFE8', borderWidth: 1,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}` }
+      }
+    },
+    scales: {
+      x: { grid: { color: '#FDF2F8' }, ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E' } },
+      y: { min: 0, max: 10, grid: { color: '#FDF2F8' }, ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E', stepSize: 2 } }
+    }
+  };
+}
+
+/* ─── Gráfica de línea — un solo rol ────────────────────── */
+function renderLineChart(submissions, role) {
+  const isEl    = role === 'el';
+  const color   = isEl ? '#60A5FA' : '#F472B6';
+  const label   = isEl ? '💙 Él — Global' : '💗 Ella — Global';
+  const bgColor = isEl ? 'rgba(96,165,250,0.12)' : 'rgba(244,114,182,0.12)';
 
   const areaDatasets = AREAS.map(area => ({
     label: `${area.icon} ${area.title}`,
     data:  submissions.map(s => s.areaScores[area.id]),
-    borderColor: area.color,
-    backgroundColor: area.color + '22',
-    borderWidth: 2,
-    tension: 0.35,
-    pointRadius: 4,
-    pointHoverRadius: 6,
-    hidden: true
+    borderColor: area.color, backgroundColor: area.color + '22',
+    borderWidth: 2, tension: 0.35, pointRadius: 4, pointHoverRadius: 6, hidden: true
   }));
 
   const ctx = document.getElementById('chart-line').getContext('2d');
   state.charts['chart-line'] = new Chart(ctx, {
     type: 'line',
     data: {
-      labels,
+      labels: submissions.map(s => s.dateISO),
       datasets: [
-        {
-          label: '🌸 Global',
-          data,
-          borderColor: '#F472B6',
-          backgroundColor: 'rgba(244,114,182,0.12)',
-          borderWidth: 3,
-          tension: 0.35,
-          fill: true,
-          pointRadius: 5,
-          pointHoverRadius: 8,
-          pointBackgroundColor: '#F472B6',
-        },
+        { label, data: submissions.map(s => s.overall), borderColor: color,
+          backgroundColor: bgColor, borderWidth: 3, tension: 0.35, fill: true,
+          pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: color },
         ...areaDatasets
       ]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            font: { family: 'Nunito', size: 12 },
-            color: '#9D174D',
-            padding: 16,
-            boxWidth: 14,
-            usePointStyle: true,
-          }
-        },
-        tooltip: {
-          backgroundColor: '#FDF2F8',
-          titleColor: '#831843',
-          bodyColor: '#9D174D',
-          borderColor: '#FBCFE8',
-          borderWidth: 1,
-          callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}`
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { color: '#FDF2F8' },
-          ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E' }
-        },
-        y: {
-          min: 0, max: 10,
-          grid: { color: '#FDF2F8' },
-          ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E', stepSize: 2 }
-        }
-      }
-    }
+    options: lineChartOptions()
+  });
+}
+
+/* ─── Gráfica de línea — Ella vs Él (Todos) ─────────────── */
+function renderLineChartDual(all) {
+  const ellaData = all.filter(s => (s.role ?? 'ella') === 'ella');
+  const elData   = all.filter(s => s.role === 'el');
+
+  /* Unir y ordenar todas las fechas únicas */
+  const allDates = [...new Set(all.map(s => s.dateISO))].sort();
+
+  const scoresByDate = (subs) => allDates.map(d => {
+    const match = subs.find(s => s.dateISO === d);
+    return match ? match.overall : null;
+  });
+
+  const ctx = document.getElementById('chart-line').getContext('2d');
+  state.charts['chart-line'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: allDates,
+      datasets: [
+        { label: '💗 Ella', data: scoresByDate(ellaData),
+          borderColor: '#F472B6', backgroundColor: 'rgba(244,114,182,0.1)',
+          borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
+          pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#F472B6' },
+        { label: '💙 Él', data: scoresByDate(elData),
+          borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.1)',
+          borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
+          pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#60A5FA' },
+      ]
+    },
+    options: lineChartOptions()
   });
 }
 

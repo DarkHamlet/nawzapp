@@ -672,6 +672,45 @@ a { color: var(--pink-deep); text-decoration: none; }
   font-size: 0.78rem;
 }
 
+/* ── Filtro de rol ──────────────────────────────────────── */
+.dash-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 7px 18px;
+  border-radius: 50px;
+  border: 2px solid var(--pink-light);
+  background: var(--white);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  color: var(--text-soft);
+  -webkit-tap-highlight-color: transparent;
+}
+.filter-btn:hover { background: var(--pink-pale); }
+
+.filter-btn.active[data-filter="all"] {
+  background: var(--pink-pale);
+  border-color: var(--pink);
+  color: var(--pink-deep);
+}
+.filter-btn.active[data-filter="ella"] {
+  background: #FFF1F2;
+  border-color: #FDA4AF;
+  color: #BE123C;
+}
+.filter-btn.active[data-filter="el"] {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+  color: #1D4ED8;
+}
+
 /* Dashboard actions */
 .dash-actions {
   display: flex;
