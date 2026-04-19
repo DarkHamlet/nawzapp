@@ -1,10 +1,77 @@
 /* ══════════════════════════════════════════════════════════
    ÑawzApp — decorations.js
-   Mariposas animadas que cruzan la pantalla
+   Fondo animado: flores · libros · mariposas
 ══════════════════════════════════════════════════════════ */
 
 'use strict';
 
+/* ── Capa de fondo fija ──────────────────────────────────── */
+function createBgLayer() {
+  const layer = document.createElement('div');
+  layer.style.position      = 'fixed';
+  layer.style.inset         = '0';
+  layer.style.pointerEvents = 'none';
+  layer.style.zIndex        = '0';
+  layer.style.overflow      = 'hidden';
+  document.body.prepend(layer);
+  return layer;
+}
+
+/* ── Flores y girasoles ──────────────────────────────────── */
+function addFlowers(layer) {
+  const EMOJIS = ['🌻', '🌻', '🌻', '🌼', '🌸', '🌺'];
+  const count  = window.innerWidth < 480 ? 12 : 20;
+
+  for (let i = 0; i < count; i++) {
+    const el   = document.createElement('span');
+    el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+
+    const size    = (1.0 + Math.random() * 1.6).toFixed(1);
+    const opacity = (0.20 + Math.random() * 0.28).toFixed(2);
+    const dur     = (3.5 + Math.random() * 4.5).toFixed(1);
+    const delay   = -(Math.random() * 6).toFixed(1);
+
+    el.style.position        = 'absolute';
+    el.style.left            = (Math.random() * 96).toFixed(1) + '%';
+    el.style.top             = (Math.random() * 94).toFixed(1) + '%';
+    el.style.fontSize        = size + 'rem';
+    el.style.opacity         = opacity;
+    el.style.userSelect      = 'none';
+    el.style.transformOrigin = '50% 90%';
+    el.style.animation       = `flower-sway ${dur}s ease-in-out ${delay}s infinite alternate`;
+    el.style.filter          = 'drop-shadow(0 2px 4px rgba(244,114,182,0.15))';
+
+    layer.appendChild(el);
+  }
+}
+
+/* ── Libros ──────────────────────────────────────────────── */
+function addBooks(layer) {
+  const EMOJIS = ['📖', '📚', '📕', '📗', '📘'];
+  const count  = window.innerWidth < 480 ? 5 : 9;
+
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('span');
+    el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+
+    const size    = (0.9 + Math.random() * 0.7).toFixed(1);
+    const opacity = (0.10 + Math.random() * 0.12).toFixed(2);
+    const dur     = (5.0 + Math.random() * 6.0).toFixed(1);
+    const delay   = -(Math.random() * 8).toFixed(1);
+
+    el.style.position  = 'absolute';
+    el.style.left      = (Math.random() * 96).toFixed(1) + '%';
+    el.style.top       = (Math.random() * 94).toFixed(1) + '%';
+    el.style.fontSize  = size + 'rem';
+    el.style.opacity   = opacity;
+    el.style.userSelect = 'none';
+    el.style.animation = `book-float ${dur}s ease-in-out ${delay}s infinite alternate`;
+
+    layer.appendChild(el);
+  }
+}
+
+/* ── Mariposa ────────────────────────────────────────────── */
 function launchButterfly() {
   const el = document.createElement('span');
   el.textContent = '🦋';
@@ -68,4 +135,7 @@ function scheduleButterflies() {
   }, 2000 + Math.random() * 2000);
 }
 
+const bgLayer = createBgLayer();
+addFlowers(bgLayer);
+addBooks(bgLayer);
 scheduleButterflies();
