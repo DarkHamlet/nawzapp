@@ -691,3 +691,66 @@ a { color: var(--pink-deep); text-decoration: none; }
   .q-text { font-size: 0.95rem; }
   .chart-card { padding: 24px 20px; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   DECORACIONES DE FONDO — flores · libros · mariposa
+═══════════════════════════════════════════════════════════ */
+
+/* Capa fija detrás de todo el contenido */
+#bg-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* El contenido de la app queda por encima */
+#app {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Flores (girasoles + flores pastel) ─────────────────── */
+.bg-flower {
+  position: absolute;
+  font-size: var(--size, 1.5rem);
+  opacity: var(--opacity, 0.35);
+  user-select: none;
+  transform-origin: 50% 90%;
+  animation: flower-sway var(--dur, 4s) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+  filter: drop-shadow(0 2px 4px rgba(244,114,182,0.2));
+}
+
+@keyframes flower-sway {
+  0%   { transform: rotate(-9deg) translateY(0px);   }
+  50%  { transform: rotate(0deg)  translateY(-5px);  }
+  100% { transform: rotate(9deg)  translateY(-10px); }
+}
+
+/* ── Libros ──────────────────────────────────────────────── */
+.bg-book {
+  position: absolute;
+  font-size: var(--size, 1.1rem);
+  opacity: var(--opacity, 0.15);
+  user-select: none;
+  animation: book-float var(--dur, 6s) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes book-float {
+  0%   { transform: translateY(0px)   rotate(-4deg); }
+  100% { transform: translateY(-14px) rotate(4deg);  }
+}
+
+/* ── Mariposa ────────────────────────────────────────────── */
+.butterfly {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10;
+  user-select: none;
+  filter: drop-shadow(0 2px 6px rgba(244,114,182,0.3));
+  will-change: left, top, transform;
+}
