@@ -585,6 +585,11 @@ a { color: var(--pink-deep); text-decoration: none; }
   margin-bottom: 8px;
 }
 
+#chart-line {
+  height: 420px !important;
+  width: 100% !important;
+}
+
 /* History table */
 .table-scroll {
   overflow-x: auto;

@@ -448,15 +448,16 @@ function renderLineChart(submissions) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
           position: 'bottom',
           labels: {
-            font: { family: 'Quicksand', size: 11 },
+            font: { family: 'Quicksand', size: 12 },
             color: '#9D174D',
-            padding: 12,
-            boxWidth: 12,
+            padding: 16,
+            boxWidth: 14,
             usePointStyle: true,
           }
         },
