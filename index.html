@@ -30,31 +30,33 @@
         <p class="logo-tagline">Tu espacio de bienestar en pareja</p>
       </div>
 
-      <form id="login-form" class="card login-card" novalidate>
-        <div class="form-group">
-          <label for="inp-name">¿Cómo te llamas?</label>
-          <input type="text" id="inp-name" placeholder="Tu nombre bonito ✨" autocomplete="name" required>
-        </div>
-        <div class="form-group">
-          <label for="inp-email">Tu correo electrónico</label>
-          <input type="email" id="inp-email" placeholder="tu@correo.com" autocomplete="email" required>
-        </div>
-        <div class="form-group">
-          <label for="inp-pass">Contraseña secreta</label>
-          <div class="input-eye-wrap">
-            <input type="password" id="inp-pass" placeholder="••••••••" required>
-            <button type="button" class="eye-btn" id="eye-btn" aria-label="Mostrar contraseña">👁</button>
+      <div class="login-form-wrap">
+        <form id="login-form" class="card login-card" novalidate>
+          <div class="form-group">
+            <label for="inp-name">¿Cómo te llamas?</label>
+            <input type="text" id="inp-name" placeholder="Tu nombre bonito ✨" autocomplete="name" required>
           </div>
-        </div>
-        <p id="login-error" class="error-msg hidden">Contraseña incorrecta 🙈 Inténtalo de nuevo.</p>
-        <button type="submit" class="btn btn-primary btn-full">
-          Comenzar encuesta &nbsp;💕
-        </button>
-      </form>
+          <div class="form-group">
+            <label for="inp-email">Tu correo electrónico</label>
+            <input type="email" id="inp-email" placeholder="tu@correo.com" autocomplete="email" required>
+          </div>
+          <div class="form-group">
+            <label for="inp-pass">Contraseña secreta</label>
+            <div class="input-eye-wrap">
+              <input type="password" id="inp-pass" placeholder="••••••••" required>
+              <button type="button" class="eye-btn" id="eye-btn" aria-label="Mostrar contraseña">👁</button>
+            </div>
+          </div>
+          <p id="login-error" class="error-msg hidden">Contraseña incorrecta 🙈 Inténtalo de nuevo.</p>
+          <button type="submit" class="btn btn-primary btn-full">
+            Comenzar encuesta &nbsp;💕
+          </button>
+        </form>
 
-      <footer class="login-footer">
-        <button class="link-btn" id="go-dashboard-btn">Ver Dashboard →</button>
-      </footer>
+        <footer class="login-footer">
+          <button class="link-btn" id="go-dashboard-btn">Ver Dashboard →</button>
+        </footer>
+      </div>
 
     </div>
   </div><!-- /view-login -->
@@ -154,14 +156,19 @@
         <div id="dash-area-cards" class="dash-area-cards"></div>
 
         <!-- Charts -->
-        <div class="section-label">Evolución del puntaje global</div>
-        <div class="chart-card">
-          <canvas id="chart-line"></canvas>
-        </div>
-
-        <div class="section-label">Comparativa por área (última encuesta)</div>
-        <div class="chart-card">
-          <canvas id="chart-radar"></canvas>
+        <div class="charts-row">
+          <div class="chart-col">
+            <div class="section-label">Evolución del puntaje global</div>
+            <div class="chart-card">
+              <canvas id="chart-line"></canvas>
+            </div>
+          </div>
+          <div class="chart-col">
+            <div class="section-label">Comparativa por área (última encuesta)</div>
+            <div class="chart-card">
+              <canvas id="chart-radar"></canvas>
+            </div>
+          </div>
         </div>
 
         <!-- History table -->

@@ -516,6 +516,7 @@ function renderRadarChart(last) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           labels: {
