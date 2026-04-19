@@ -357,8 +357,8 @@ function submitSurvey() {
 
   const submission = {
     id:         Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    date:       new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' }),
-    dateISO:    new Date().toISOString().split('T')[0],
+    date:       new Date().toLocaleString('es-ES', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' }),
+    dateISO:    (() => { const d = new Date(); const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; })(),
     name:       state.user.name,
     email:      state.user.email,
     role:       state.user.role,
@@ -525,7 +525,22 @@ function lineChartOptions() {
       }
     },
     scales: {
-      x: { grid: { color: '#FDF2F8' }, ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E' } },
+      x: {
+        grid: { color: '#FDF2F8' },
+        ticks: {
+          font: { family: 'Nunito', size: 9 },
+          color: '#C4859E',
+          maxRotation: 45,
+          callback: function(val) {
+            const label = this.getLabelForValue(val);
+            if (!label) return val;
+            const [datePart, timePart] = label.split(' ');
+            if (!timePart) return datePart;
+            const [, mm, dd] = datePart.split('-');
+            return [`${dd}/${mm}`, timePart];
+          }
+        }
+      },
       y: { min: 0, max: 10, grid: { color: '#FDF2F8' }, ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E', stepSize: 2 } }
     }
   };
