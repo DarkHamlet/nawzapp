@@ -33,8 +33,15 @@
       <div class="login-form-wrap">
         <form id="login-form" class="card login-card" novalidate>
           <div class="form-group">
+            <label>¿Quién responde?</label>
+            <div class="role-selector">
+              <button type="button" class="role-btn" id="role-ella" data-role="ella">💗 Ella</button>
+              <button type="button" class="role-btn" id="role-el"   data-role="el">💙 Él</button>
+            </div>
+          </div>
+          <div class="form-group">
             <label for="inp-name">¿Cómo te llamas?</label>
-            <input type="text" id="inp-name" placeholder="Tu nombre bonito ✨" autocomplete="name" required>
+            <input type="text" id="inp-name" placeholder="Tu nombre ✨" autocomplete="name" required>
           </div>
           <div class="form-group">
             <label for="inp-email">Tu correo electrónico</label>
@@ -48,6 +55,7 @@
             </div>
           </div>
           <p id="login-error" class="error-msg hidden">Contraseña incorrecta 🙈 Inténtalo de nuevo.</p>
+          <p id="role-error" class="error-msg hidden">Por favor selecciona quién responde 💕</p>
           <button type="submit" class="btn btn-primary btn-full">
             Comenzar encuesta &nbsp;💕
           </button>
@@ -177,6 +185,7 @@
           <table class="hist-table">
             <thead>
               <tr>
+                <th>Quién</th>
                 <th>Fecha</th>
                 <th>Nombre</th>
                 <th>🥰</th>

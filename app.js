@@ -19,10 +19,17 @@ const AREAS = [
     color: '#FDA4AF',
     bg:    '#FFF1F2',
     textColor: '#BE123C',
-    questions: [
+    questionsElla: [
       '¿Qué tan contenta y plena te sientes con la relación en general?',
       '¿Qué tan escuchada y comprendida te sientes por él?',
       '¿Qué tan valorada y apreciada te sientes cada día?',
+      '¿Qué tan estable y segura sientes la relación emocionalmente?',
+      '¿Qué tan profunda y genuina sientes la conexión emocional entre ustedes?',
+    ],
+    questionsEl: [
+      '¿Qué tan contento y pleno te sientes con la relación en general?',
+      '¿Qué tan escuchado y comprendido te sientes por ella?',
+      '¿Qué tan valorado y apreciado te sientes cada día?',
       '¿Qué tan estable y segura sientes la relación emocionalmente?',
       '¿Qué tan profunda y genuina sientes la conexión emocional entre ustedes?',
     ]
@@ -36,12 +43,19 @@ const AREAS = [
     color: '#FDBA74',
     bg:    '#FFF7ED',
     textColor: '#B45309',
-    questions: [
+    questionsElla: [
       '¿Qué tan segura físicamente te sientes con él a tu lado?',
       '¿Qué tan satisfecha estás con el afecto físico y la intimidad?',
       '¿Qué tan cuidada te sientes en tu bienestar y salud por él?',
       '¿Qué tan cómoda y relajada te sientes en su presencia física?',
-      '¿Qué tan satisfecha estás con los gestos y detalles físicos de amor que él tiene contigo?',
+      '¿Qué tan satisfecha estás con los gestos y detalles de amor que él tiene contigo?',
+    ],
+    questionsEl: [
+      '¿Qué tan comprometido te sientes con la seguridad y protección de ella?',
+      '¿Qué tan satisfecho estás con el afecto físico y la intimidad?',
+      '¿Qué tan cuidado te sientes en tu bienestar y salud por ella?',
+      '¿Qué tan cómodo y relajado te sientes en su presencia física?',
+      '¿Qué tan satisfecho estás con los gestos y detalles de amor que ella tiene contigo?',
     ]
   },
   {
@@ -49,16 +63,23 @@ const AREAS = [
     title: 'Crecimiento & Desafío Personal',
     icon:  '🌱',
     badge: 'Área 3 · Crecimiento',
-    desc:  'Cómo él contribuye a tu desarrollo personal',
+    desc:  'Cómo contribuyen al desarrollo personal mutuo',
     color: '#6EE7B7',
     bg:    '#ECFDF5',
     textColor: '#047857',
-    questions: [
+    questionsElla: [
       '¿Qué tan desafiada intelectualmente te hace sentir él?',
       '¿Qué tan apoyada te sientes en tus metas y sueños?',
       '¿Qué tan motivada te sientes a crecer gracias a él?',
       '¿Qué tan libre te sientes de ser tú misma dentro de la relación?',
       '¿Qué tan orgullosa te sientes de la persona que eres junto a él?',
+    ],
+    questionsEl: [
+      '¿Qué tan desafiado intelectualmente te hace sentir ella?',
+      '¿Qué tan apoyado te sientes en tus metas y sueños?',
+      '¿Qué tan motivado te sientes a crecer gracias a ella?',
+      '¿Qué tan libre te sientes de ser tú mismo dentro de la relación?',
+      '¿Qué tan orgulloso te sientes de la persona que eres junto a ella?',
     ]
   },
   {
@@ -70,12 +91,19 @@ const AREAS = [
     color: '#C4B5FD',
     bg:    '#F5F3FF',
     textColor: '#6D28D9',
-    questions: [
+    questionsElla: [
       '¿Qué tan divertida y alegre te sientes a su lado?',
       '¿Qué tan romántica y especial sientes la relación?',
       '¿Qué tan satisfecha estás con cómo se comunican?',
       '¿Qué tan bien funcionan como equipo en el día a día?',
       '¿Qué tan ilusionada te sientes con el futuro que están construyendo juntos?',
+    ],
+    questionsEl: [
+      '¿Qué tan divertido y alegre te sientes a su lado?',
+      '¿Qué tan romántica y especial sientes la relación?',
+      '¿Qué tan satisfecho estás con cómo se comunican?',
+      '¿Qué tan bien funcionan como equipo en el día a día?',
+      '¿Qué tan ilusionado te sientes con el futuro que están construyendo juntos?',
     ]
   }
 ];
@@ -88,10 +116,10 @@ const RATING_LABELS = {
 
 /* ── Estado de la app ────────────────────────────────────── */
 let state = {
-  user: { name: '', email: '' },
+  user: { name: '', email: '', role: '' },  // role: 'ella' | 'el'
   currentArea: 0,
-  answers: {},        // { areaId: { q0: 7, q1: 5, ... } }
-  charts: {}          // chart instances keyed by id
+  answers: {},
+  charts: {}
 };
 
 /* ── Almacenamiento ──────────────────────────────────────── */
@@ -119,21 +147,40 @@ function goView(id) {
 }
 
 /* ── LOGIN ───────────────────────────────────────────────── */
+
+/* Selector de rol */
+let selectedRole = '';
+document.querySelectorAll('.role-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    selectedRole = this.dataset.role;
+    document.getElementById('role-error').classList.add('hidden');
+  });
+});
+
 document.getElementById('login-form').addEventListener('submit', function (e) {
   e.preventDefault();
   const name  = document.getElementById('inp-name').value.trim();
   const email = document.getElementById('inp-email').value.trim();
   const pass  = document.getElementById('inp-pass').value;
-  const errEl = document.getElementById('login-error');
+  const passErr = document.getElementById('login-error');
+  const roleErr = document.getElementById('role-error');
+
+  if (!selectedRole) {
+    roleErr.classList.remove('hidden');
+    return;
+  }
+  roleErr.classList.add('hidden');
 
   if (pass !== SECRET_PASS) {
-    errEl.classList.remove('hidden');
+    passErr.classList.remove('hidden');
     document.getElementById('inp-pass').value = '';
     document.getElementById('inp-pass').focus();
     return;
   }
-  errEl.classList.add('hidden');
-  state.user = { name, email };
+  passErr.classList.add('hidden');
+  state.user = { name, email, role: selectedRole };
   state.currentArea = 0;
   state.answers = {};
   startSurvey();
@@ -189,8 +236,9 @@ function renderArea(areaIdx) {
   container.innerHTML = '';
 
   const saved = state.answers[area.id] || {};
+  const questions = state.user.role === 'el' ? area.questionsEl : area.questionsElla;
 
-  area.questions.forEach((qText, qIdx) => {
+  questions.forEach((qText, qIdx) => {
     const card = document.createElement('div');
     card.className = 'q-card';
     card.id = `qcard-${areaIdx}-${qIdx}`;
@@ -312,6 +360,7 @@ function submitSurvey() {
     dateISO:    new Date().toISOString().split('T')[0],
     name:       state.user.name,
     email:      state.user.email,
+    role:       state.user.role,
     answers:    JSON.parse(JSON.stringify(state.answers)),
     areaScores,
     overall
@@ -555,8 +604,13 @@ function renderHistTable(submissions) {
     const pill = (val, areaColor) =>
       `<span class="score-pill" style="background:${areaColor}33;color:${scoreColor(val)}">${val}</span>`;
 
+    const roleTag = s.role === 'el'
+      ? '<span style="color:#1D4ED8;font-weight:700">💙 Él</span>'
+      : '<span style="color:#BE123C;font-weight:700">💗 Ella</span>';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td>${roleTag}</td>
       <td>${s.dateISO}</td>
       <td>${s.name}</td>
       <td>${pill(s.areaScores.emocional,    AREAS[0].color)}</td>
