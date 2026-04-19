@@ -13,23 +13,24 @@ const AREAS = [
   {
     id:    'emocional',
     title: 'Vínculo Emocional',
-    icon:  '💗',
+    icon:  '🥰',
     badge: 'Área 1 · Emocional',
     desc:  'Cómo te sientes emocionalmente en la relación',
     color: '#FDA4AF',
     bg:    '#FFF1F2',
     textColor: '#BE123C',
     questions: [
-      '¿Qué tan contenta te sientes con la relación en general?',
+      '¿Qué tan contenta y plena te sientes con la relación en general?',
       '¿Qué tan escuchada y comprendida te sientes por él?',
       '¿Qué tan valorada y apreciada te sientes cada día?',
       '¿Qué tan estable y segura sientes la relación emocionalmente?',
+      '¿Qué tan profunda y genuina sientes la conexión emocional entre ustedes?',
     ]
   },
   {
     id:    'fisico',
     title: 'Seguridad & Bienestar Físico',
-    icon:  '🌼',
+    icon:  '🫂',
     badge: 'Área 2 · Físico',
     desc:  'Seguridad, afecto físico y cuidado mutuo',
     color: '#FDBA74',
@@ -39,12 +40,14 @@ const AREAS = [
       '¿Qué tan segura físicamente te sientes con él a tu lado?',
       '¿Qué tan satisfecha estás con el afecto físico y la intimidad?',
       '¿Qué tan cuidada te sientes en tu bienestar y salud por él?',
+      '¿Qué tan cómoda y relajada te sientes en su presencia física?',
+      '¿Qué tan satisfecha estás con los gestos y detalles físicos de amor que él tiene contigo?',
     ]
   },
   {
     id:    'crecimiento',
     title: 'Crecimiento & Desafío Personal',
-    icon:  '✨',
+    icon:  '🌱',
     badge: 'Área 3 · Crecimiento',
     desc:  'Cómo él contribuye a tu desarrollo personal',
     color: '#6EE7B7',
@@ -54,12 +57,14 @@ const AREAS = [
       '¿Qué tan desafiada intelectualmente te hace sentir él?',
       '¿Qué tan apoyada te sientes en tus metas y sueños?',
       '¿Qué tan motivada te sientes a crecer gracias a él?',
+      '¿Qué tan libre te sientes de ser tú misma dentro de la relación?',
+      '¿Qué tan orgullosa te sientes de la persona que eres junto a él?',
     ]
   },
   {
     id:    'social',
     title: 'Diversión & Conexión',
-    icon:  '💜',
+    icon:  '🌟',
     badge: 'Área 4 · Social',
     desc:  'Diversión, romance, comunicación y trabajo en equipo',
     color: '#C4B5FD',
@@ -70,6 +75,7 @@ const AREAS = [
       '¿Qué tan romántica y especial sientes la relación?',
       '¿Qué tan satisfecha estás con cómo se comunican?',
       '¿Qué tan bien funcionan como equipo en el día a día?',
+      '¿Qué tan ilusionada te sientes con el futuro que están construyendo juntos?',
     ]
   }
 ];
