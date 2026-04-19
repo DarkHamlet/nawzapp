@@ -556,7 +556,7 @@ function renderLineChartFiltered(all, roles, area) {
         label: `${cfg.label} — ${areaName}`,
         data:  allDates.map(d => { const m = subs.find(s => s.dateISO === d); return m ? getScoreForArea(m, area) : null; }),
         borderColor: cfg.color, backgroundColor: cfg.bg,
-        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
+        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: true,
         pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: cfg.color
       });
     });
