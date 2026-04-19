@@ -163,17 +163,32 @@
         <!-- Area score cards -->
         <div id="dash-area-cards" class="dash-area-cards"></div>
 
-        <!-- Filtro por rol -->
-        <div class="dash-filter">
-          <button class="filter-btn active" data-filter="all"  onclick="applyDashFilter('all')">👫 Todos</button>
-          <button class="filter-btn"        data-filter="ella" onclick="applyDashFilter('ella')">💗 Ella</button>
-          <button class="filter-btn"        data-filter="el"   onclick="applyDashFilter('el')">💙 Él</button>
+        <!-- Filtros cruzados: Área × Rol -->
+        <div class="dash-filters">
+          <div class="filter-row">
+            <span class="filter-label">Área</span>
+            <div class="filter-group" id="filter-area">
+              <button class="filter-btn active" data-area="global"       onclick="applyDashFilter({area:'global'})">📊 Global</button>
+              <button class="filter-btn"        data-area="emocional"    onclick="applyDashFilter({area:'emocional'})">🥰 Emocional</button>
+              <button class="filter-btn"        data-area="fisico"       onclick="applyDashFilter({area:'fisico'})">🫂 Físico</button>
+              <button class="filter-btn"        data-area="crecimiento"  onclick="applyDashFilter({area:'crecimiento'})">🌱 Crecimiento</button>
+              <button class="filter-btn"        data-area="social"       onclick="applyDashFilter({area:'social'})">🌟 Conexión</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label">Rol</span>
+            <div class="filter-group" id="filter-role">
+              <button class="filter-btn role active" data-role="all"  onclick="applyDashFilter({role:'all'})">👫 Ambos</button>
+              <button class="filter-btn role"        data-role="ella" onclick="applyDashFilter({role:'ella'})">💗 Ella</button>
+              <button class="filter-btn role"        data-role="el"   onclick="applyDashFilter({role:'el'})">💙 Él</button>
+            </div>
+          </div>
         </div>
 
         <!-- Charts -->
         <div class="charts-row">
           <div class="chart-col">
-            <div class="section-label">Evolución del puntaje global</div>
+            <div class="section-label" id="chart-line-label">El pulso de nuestra relación 💕</div>
             <div class="chart-card">
               <canvas id="chart-line"></canvas>
             </div>

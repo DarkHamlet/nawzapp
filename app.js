@@ -394,7 +394,7 @@ function showThanks(submission) {
 }
 
 /* ── DASHBOARD ───────────────────────────────────────────── */
-let dashFilter = 'all';
+let dashFilter = { role: 'all', area: 'global' };
 
 function renderDashboard() {
   const all = loadSubmissions();
@@ -409,44 +409,57 @@ function renderDashboard() {
   document.getElementById('dash-content').classList.remove('hidden');
 
   renderHistTable(all);
-  applyDashFilter(dashFilter);
+  rerenderDashboardCharts();
 }
 
-function applyDashFilter(filter) {
-  dashFilter = filter;
+function applyDashFilter(changes) {
+  Object.assign(dashFilter, changes);
 
-  /* Actualizar botones */
-  document.querySelectorAll('.filter-btn').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.filter === filter)
+  /* Sincronizar botones de área */
+  document.querySelectorAll('#filter-area .filter-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.area === dashFilter.area)
+  );
+  /* Sincronizar botones de rol */
+  document.querySelectorAll('#filter-role .filter-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.role === dashFilter.role)
   );
 
+  rerenderDashboardCharts();
+}
+
+function rerenderDashboardCharts() {
   /* Destruir gráficas anteriores */
   ['chart-line', 'chart-radar'].forEach(id => {
     if (state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
   });
 
-  const all      = loadSubmissions();
-  const filtered = filter === 'all' ? all : all.filter(s => (s.role ?? 'ella') === filter);
+  const all  = loadSubmissions();
+  const role = dashFilter.role;
+  const area = dashFilter.area;
 
-  if (filtered.length === 0) return;
+  /* Submissions filtradas por rol para cards y radar */
+  const byRole = role === 'all' ? all : all.filter(s => (s.role ?? 'ella') === role);
+  if (byRole.length === 0) return;
 
-  const last = filtered[filtered.length - 1];
+  const last = byRole[byRole.length - 1];
 
-  /* Fecha última encuesta (del rol filtrado) */
-  const roleLabel = filter === 'el' ? '💙 Él' : filter === 'ella' ? '💗 Ella' : '👫 Todos';
+  /* Etiqueta dinámica del gráfico */
+  const areaObj   = AREAS.find(a => a.id === area);
+  const areaName  = area === 'global' ? 'Global' : areaObj?.title ?? area;
+  const roleLabel = role === 'el' ? '💙 Él' : role === 'ella' ? '💗 Ella' : '👫 Ambos';
+  document.getElementById('chart-line-label').textContent =
+    `El pulso de nuestra relación — ${areaName} · ${roleLabel}`;
+
+  /* Fecha última encuesta */
   document.getElementById('dash-last-date').textContent =
     `${roleLabel} · Última encuesta: ${last.date} — ${last.name}`;
 
-  /* Cards de área */
-  renderAreaCards(last, filtered);
-
-  /* Gráficas */
-  if (filter === 'all') {
-    renderLineChartDual(all);
-  } else {
-    renderLineChart(filtered, filter);
-  }
+  /* Cards de área y radar usan el último del rol filtrado */
+  renderAreaCards(last, byRole);
   renderRadarChart(last);
+
+  /* Gráfica de línea: cruzada Área × Rol */
+  renderLineChartFiltered(all, role, area);
 }
 
 /* ─── Cards de área ─────────────────────────────────────── */
@@ -480,6 +493,11 @@ function renderAreaCards(last, submissions) {
   }).join('');
 }
 
+/* ─── Helper: score de un submission según área ─────────── */
+function getScoreForArea(submission, area) {
+  return area === 'global' ? submission.overall : (submission.areaScores[area] ?? null);
+}
+
 /* ─── Opciones base de gráfica de línea ─────────────────── */
 function lineChartOptions() {
   return {
@@ -504,65 +522,56 @@ function lineChartOptions() {
   };
 }
 
-/* ─── Gráfica de línea — un solo rol ────────────────────── */
-function renderLineChart(submissions, role) {
-  const isEl    = role === 'el';
-  const color   = isEl ? '#60A5FA' : '#F472B6';
-  const label   = isEl ? '💙 Él — Global' : '💗 Ella — Global';
-  const bgColor = isEl ? 'rgba(96,165,250,0.12)' : 'rgba(244,114,182,0.12)';
-
-  const areaDatasets = AREAS.map(area => ({
-    label: `${area.icon} ${area.title}`,
-    data:  submissions.map(s => s.areaScores[area.id]),
-    borderColor: area.color, backgroundColor: area.color + '22',
-    borderWidth: 2, tension: 0.35, pointRadius: 4, pointHoverRadius: 6, hidden: true
-  }));
-
-  const ctx = document.getElementById('chart-line').getContext('2d');
-  state.charts['chart-line'] = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: submissions.map(s => s.dateISO),
-      datasets: [
-        { label, data: submissions.map(s => s.overall), borderColor: color,
-          backgroundColor: bgColor, borderWidth: 3, tension: 0.35, fill: true,
-          pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: color },
-        ...areaDatasets
-      ]
-    },
-    options: lineChartOptions()
-  });
-}
-
-/* ─── Gráfica de línea — Ella vs Él (Todos) ─────────────── */
-function renderLineChartDual(all) {
+/* ─── Gráfica de línea cruzada: Área × Rol ──────────────── */
+function renderLineChartFiltered(all, role, area) {
   const ellaData = all.filter(s => (s.role ?? 'ella') === 'ella');
   const elData   = all.filter(s => s.role === 'el');
 
-  /* Unir y ordenar todas las fechas únicas */
-  const allDates = [...new Set(all.map(s => s.dateISO))].sort();
+  const areaObj  = AREAS.find(a => a.id === area);
+  const areaName = area === 'global' ? 'Global' : areaObj?.title ?? area;
 
-  const scoresByDate = (subs) => allDates.map(d => {
-    const match = subs.find(s => s.dateISO === d);
-    return match ? match.overall : null;
-  });
+  let datasets, labels;
+
+  if (role === 'all') {
+    /* Ambos roles — dos líneas con fechas fusionadas */
+    const allDates = [...new Set(all.map(s => s.dateISO))].sort();
+    const scoresByDate = (subs) => allDates.map(d => {
+      const m = subs.find(s => s.dateISO === d);
+      return m ? getScoreForArea(m, area) : null;
+    });
+    labels   = allDates;
+    datasets = [
+      { label: `💗 Ella — ${areaName}`,
+        data: scoresByDate(ellaData),
+        borderColor: '#F472B6', backgroundColor: 'rgba(244,114,182,0.1)',
+        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
+        pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#F472B6' },
+      { label: `💙 Él — ${areaName}`,
+        data: scoresByDate(elData),
+        borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.1)',
+        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
+        pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#60A5FA' },
+    ];
+  } else {
+    /* Un solo rol */
+    const subs    = role === 'el' ? elData : ellaData;
+    const color   = role === 'el' ? '#60A5FA' : '#F472B6';
+    const bgColor = role === 'el' ? 'rgba(96,165,250,0.12)' : 'rgba(244,114,182,0.12)';
+    const icon    = role === 'el' ? '💙 Él' : '💗 Ella';
+    labels   = subs.map(s => s.dateISO);
+    datasets = [{
+      label: `${icon} — ${areaName}`,
+      data: subs.map(s => getScoreForArea(s, area)),
+      borderColor: color, backgroundColor: bgColor,
+      borderWidth: 3, tension: 0.35, fill: true, spanGaps: false,
+      pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: color
+    }];
+  }
 
   const ctx = document.getElementById('chart-line').getContext('2d');
   state.charts['chart-line'] = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: allDates,
-      datasets: [
-        { label: '💗 Ella', data: scoresByDate(ellaData),
-          borderColor: '#F472B6', backgroundColor: 'rgba(244,114,182,0.1)',
-          borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
-          pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#F472B6' },
-        { label: '💙 Él', data: scoresByDate(elData),
-          borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.1)',
-          borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: false,
-          pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#60A5FA' },
-      ]
-    },
+    data: { labels, datasets },
     options: lineChartOptions()
   });
 }
