@@ -305,7 +305,8 @@ function nextArea() {
   /* Validar que todas las preguntas están respondidas */
   const saved = state.answers[area.id] || {};
   let allAnswered = true;
-  area.questions.forEach((_, qIdx) => {
+  const questions = state.user.role === 'el' ? area.questionsEl : area.questionsElla;
+  questions.forEach((_, qIdx) => {
     if (saved[qIdx] === undefined) {
       allAnswered = false;
       const card = document.getElementById(`qcard-${state.currentArea}-${qIdx}`);
