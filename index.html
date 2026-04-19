@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#F9A8D4">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>ÑawzApp 🌸</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ════════════════════════════════════════
+       VIEW: LOGIN
+  ════════════════════════════════════════ -->
+  <div id="view-login" class="view active">
+    <div class="login-wrap">
+
+      <div class="logo-block">
+        <div class="logo-petals">🌸</div>
+        <h1 class="logo-name">ÑawzApp</h1>
+        <p class="logo-tagline">Tu espacio de bienestar en pareja</p>
+      </div>
+
+      <form id="login-form" class="card login-card" novalidate>
+        <div class="form-group">
+          <label for="inp-name">¿Cómo te llamas?</label>
+          <input type="text" id="inp-name" placeholder="Tu nombre bonito ✨" autocomplete="name" required>
+        </div>
+        <div class="form-group">
+          <label for="inp-email">Tu correo electrónico</label>
+          <input type="email" id="inp-email" placeholder="tu@correo.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label for="inp-pass">Contraseña secreta</label>
+          <div class="input-eye-wrap">
+            <input type="password" id="inp-pass" placeholder="••••••••" required>
+            <button type="button" class="eye-btn" id="eye-btn" aria-label="Mostrar contraseña">👁</button>
+          </div>
+        </div>
+        <p id="login-error" class="error-msg hidden">Contraseña incorrecta 🙈 Inténtalo de nuevo.</p>
+        <button type="submit" class="btn btn-primary btn-full">
+          Comenzar encuesta &nbsp;💕
+        </button>
+      </form>
+
+      <footer class="login-footer">
+        <button class="link-btn" id="go-dashboard-btn">Ver Dashboard →</button>
+      </footer>
+
+    </div>
+  </div><!-- /view-login -->
+
+
+  <!-- ════════════════════════════════════════
+       VIEW: SURVEY
+  ════════════════════════════════════════ -->
+  <div id="view-survey" class="view">
+    <div class="survey-wrap">
+
+      <div class="survey-top">
+        <div class="progress-bar-track">
+          <div id="progress-fill" class="progress-bar-fill"></div>
+        </div>
+        <div class="survey-meta-row">
+          <span id="area-badge" class="area-badge"></span>
+          <span id="step-counter" class="step-counter"></span>
+        </div>
+        <div id="area-header" class="area-header-block">
+          <span id="area-icon-big" class="area-icon-big"></span>
+          <div class="area-header-text">
+            <h2 id="area-title" class="area-title"></h2>
+            <p id="area-desc" class="area-desc"></p>
+          </div>
+        </div>
+      </div>
+
+      <div id="questions-list" class="questions-list">
+        <!-- Questions injected by JS -->
+      </div>
+
+      <div class="survey-nav">
+        <button id="btn-prev" class="btn btn-outline" onclick="prevArea()">← Anterior</button>
+        <button id="btn-next" class="btn btn-primary" onclick="nextArea()">Siguiente →</button>
+      </div>
+
+    </div>
+  </div><!-- /view-survey -->
+
+
+  <!-- ════════════════════════════════════════
+       VIEW: THANKS
+  ════════════════════════════════════════ -->
+  <div id="view-thanks" class="view">
+    <div class="thanks-wrap">
+
+      <div class="thanks-anim" id="confetti-zone">🎉</div>
+      <h2 class="thanks-title">¡Gracias, <span id="thanks-name" class="thanks-name-hi"></span>! 💕</h2>
+      <p class="thanks-sub">Tu encuesta de este mes quedó guardada.</p>
+
+      <div id="area-scores" class="area-scores-grid">
+        <!-- Score cards injected by JS -->
+      </div>
+
+      <div class="overall-bubble">
+        <span id="overall-val" class="overall-val"></span>
+        <span class="overall-lbl">puntaje global</span>
+      </div>
+
+      <div class="thanks-actions">
+        <button class="btn btn-outline" onclick="goView('view-login')">Nueva encuesta</button>
+        <button class="btn btn-primary" onclick="goView('view-dashboard')">Ver Dashboard</button>
+      </div>
+
+    </div>
+  </div><!-- /view-thanks -->
+
+
+  <!-- ════════════════════════════════════════
+       VIEW: DASHBOARD
+  ════════════════════════════════════════ -->
+  <div id="view-dashboard" class="view">
+    <div class="dash-wrap">
+
+      <div class="dash-header">
+        <div>
+          <h1 class="dash-title">📊 Dashboard</h1>
+          <p class="dash-subtitle">ÑawzApp · Métricas de relación</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="goView('view-login')">← Encuesta</button>
+      </div>
+
+      <!-- Empty state -->
+      <div id="dash-empty" class="dash-empty hidden">
+        <div class="empty-icon">🌸</div>
+        <p>Aún no hay encuestas registradas.</p>
+        <button class="btn btn-primary" onclick="goView('view-login')">Ir a la encuesta</button>
+      </div>
+
+      <!-- Dashboard content -->
+      <div id="dash-content" class="hidden">
+
+        <p id="dash-last-date" class="dash-last-date"></p>
+
+        <!-- Area score cards -->
+        <div id="dash-area-cards" class="dash-area-cards"></div>
+
+        <!-- Charts -->
+        <div class="section-label">Evolución del puntaje global</div>
+        <div class="chart-card">
+          <canvas id="chart-line"></canvas>
+        </div>
+
+        <div class="section-label">Comparativa por área (última encuesta)</div>
+        <div class="chart-card">
+          <canvas id="chart-radar"></canvas>
+        </div>
+
+        <!-- History table -->
+        <div class="section-label">Historial de encuestas</div>
+        <div class="table-scroll">
+          <table class="hist-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Nombre</th>
+                <th>💗</th>
+                <th>🌼</th>
+                <th>✨</th>
+                <th>💜</th>
+                <th>Global</th>
+              </tr>
+            </thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Data actions -->
+        <div class="dash-actions">
+          <button class="btn btn-outline btn-sm" onclick="exportJSON()">⬇ Exportar JSON</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('imp-file').click()">⬆ Importar JSON</button>
+          <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importJSON(event)">
+          <button class="btn btn-ghost-danger btn-sm" onclick="clearAllData()">🗑 Borrar todo</button>
+        </div>
+
+      </div><!-- /dash-content -->
+
+    </div>
+  </div><!-- /view-dashboard -->
+
+</div><!-- /app -->
+
+<script src="app.js"></script>
+</body>
+</html>
