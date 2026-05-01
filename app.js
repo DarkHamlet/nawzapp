@@ -313,41 +313,54 @@ async function _doRegister(name, email, pass, role, partnerEmail) {
     const uid  = cred.user.uid;
     state.fbUser = cred.user;
 
-    // Check if partner already registered and declared this email as their partner
+    // Check if partner already registered
     const partnerQ = await db.collection('users')
       .where('email', '==', partnerEmail)
-      .where('partnerEmail', '==', email)
       .get();
 
     let coupleId = null;
 
     if (!partnerQ.empty) {
-      // Partner found — link to their pending couple
       const partnerDoc  = partnerQ.docs[0];
       const partnerData = partnerDoc.data();
       coupleId = partnerData.coupleId;
 
-      const coupleUpdate = { status: 'active' };
-      if (role === 'ella') { coupleUpdate.ellaUid = uid; coupleUpdate.ellaEmail = email; }
-      else                 { coupleUpdate.elUid   = uid; coupleUpdate.elEmail   = email; }
-      await db.collection('couples').doc(coupleId).update(coupleUpdate);
+      if (coupleId) {
+        // Partner already has a pending couple — activate it
+        const coupleUpdate = { status: 'active' };
+        if (role === 'ella') { coupleUpdate.ellaUid = uid; coupleUpdate.ellaEmail = email; }
+        else                 { coupleUpdate.elUid   = uid; coupleUpdate.elEmail   = email; }
+        await db.collection('couples').doc(coupleId).update(coupleUpdate);
 
-      // Migrate partner's personal surveys → couple subcollection
-      const pendingSnap = await db.collection('users').doc(partnerDoc.id).collection('surveys').get();
-      if (!pendingSnap.empty) {
-        const batch = db.batch();
-        pendingSnap.docs.forEach(s => {
-          batch.set(db.collection('couples').doc(coupleId).collection('surveys').doc(s.id), s.data());
-          batch.delete(s.ref);
-        });
-        await batch.commit();
+        // Migrate partner's personal surveys → couple subcollection
+        const pendingSnap = await db.collection('users').doc(partnerDoc.id).collection('surveys').get();
+        if (!pendingSnap.empty) {
+          const batch = db.batch();
+          pendingSnap.docs.forEach(s => {
+            batch.set(db.collection('couples').doc(coupleId).collection('surveys').doc(s.id), s.data());
+            batch.delete(s.ref);
+          });
+          await batch.commit();
+        }
+      } else {
+        // Partner exists but has no couple yet — create one linking both
+        const coupleRef = db.collection('couples').doc();
+        coupleId = coupleRef.id;
+        const coupleData = { status: 'active', createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+        if (role === 'ella') {
+          coupleData.ellaUid = uid; coupleData.ellaEmail = email;
+          coupleData.elUid = partnerDoc.id; coupleData.elEmail = partnerEmail;
+        } else {
+          coupleData.elUid = uid; coupleData.elEmail = email;
+          coupleData.ellaUid = partnerDoc.id; coupleData.ellaEmail = partnerEmail;
+        }
+        await coupleRef.set(coupleData);
       }
 
-      // Reload couple state for partner (they'll get it on next load)
       await db.collection('users').doc(partnerDoc.id).update({ coupleId });
 
     } else {
-      // No matching partner yet — create pending couple
+      // Partner not found yet — create pending couple
       const coupleRef  = db.collection('couples').doc();
       coupleId = coupleRef.id;
       const coupleData = { status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp() };
