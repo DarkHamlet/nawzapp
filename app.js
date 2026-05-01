@@ -1,24 +1,15 @@
 /* ══════════════════════════════════════════════════════════
-   ÑawzApp — app.js
-   Lógica completa: login · encuesta · dashboard · storage
+   ÑawzApp — app.js  v7
+   Firebase Auth + Firestore
 ══════════════════════════════════════════════════════════ */
-
 'use strict';
 
-/* ── Contraseña ──────────────────────────────────────────── */
-const SECRET_PASS = 'teamogat@';
-
-/* ── Estructura de áreas y preguntas ────────────────────── */
+/* ── Áreas y preguntas ───────────────────────────────────── */
 const AREAS = [
   {
-    id:    'emocional',
-    title: 'Vínculo Emocional',
-    icon:  '🥰',
-    badge: 'Área 1 · Emocional',
-    desc:  'Cómo te sientes emocionalmente en la relación',
-    color: '#FDA4AF',
-    bg:    '#FFF1F2',
-    textColor: '#BE123C',
+    id: 'emocional', title: 'Vínculo Emocional', icon: '🥰',
+    badge: 'Área 1 · Emocional', desc: 'Cómo te sientes emocionalmente en la relación',
+    color: '#FDA4AF', bg: '#FFF1F2', textColor: '#BE123C',
     questionsElla: [
       '¿Qué tan contenta y plena te sientes con la relación en general?',
       '¿Qué tan escuchada y comprendida te sientes por él?',
@@ -35,14 +26,9 @@ const AREAS = [
     ]
   },
   {
-    id:    'fisico',
-    title: 'Seguridad & Bienestar Físico',
-    icon:  '🫂',
-    badge: 'Área 2 · Físico',
-    desc:  'Seguridad, afecto físico y cuidado mutuo',
-    color: '#FDBA74',
-    bg:    '#FFF7ED',
-    textColor: '#B45309',
+    id: 'fisico', title: 'Seguridad & Bienestar Físico', icon: '🫂',
+    badge: 'Área 2 · Físico', desc: 'Seguridad, afecto físico y cuidado mutuo',
+    color: '#FDBA74', bg: '#FFF7ED', textColor: '#B45309',
     questionsElla: [
       '¿Qué tan segura físicamente te sientes con él a tu lado?',
       '¿Qué tan satisfecha estás con el afecto físico y la intimidad?',
@@ -59,14 +45,9 @@ const AREAS = [
     ]
   },
   {
-    id:    'crecimiento',
-    title: 'Crecimiento & Desafío Personal',
-    icon:  '🌱',
-    badge: 'Área 3 · Crecimiento',
-    desc:  'Cómo contribuyen al desarrollo personal mutuo',
-    color: '#6EE7B7',
-    bg:    '#ECFDF5',
-    textColor: '#047857',
+    id: 'crecimiento', title: 'Crecimiento & Desafío Personal', icon: '🌱',
+    badge: 'Área 3 · Crecimiento', desc: 'Cómo contribuyen al desarrollo personal mutuo',
+    color: '#6EE7B7', bg: '#ECFDF5', textColor: '#047857',
     questionsElla: [
       '¿Qué tan desafiada intelectualmente te hace sentir él?',
       '¿Qué tan apoyada te sientes en tus metas y sueños?',
@@ -83,14 +64,9 @@ const AREAS = [
     ]
   },
   {
-    id:    'social',
-    title: 'Diversión & Conexión',
-    icon:  '🌟',
-    badge: 'Área 4 · Social',
-    desc:  'Diversión, romance, comunicación y trabajo en equipo',
-    color: '#C4B5FD',
-    bg:    '#F5F3FF',
-    textColor: '#6D28D9',
+    id: 'social', title: 'Diversión & Conexión', icon: '🌟',
+    badge: 'Área 4 · Social', desc: 'Diversión, romance, comunicación y trabajo en equipo',
+    color: '#C4B5FD', bg: '#F5F3FF', textColor: '#6D28D9',
     questionsElla: [
       '¿Qué tan divertida y alegre te sientes a su lado?',
       '¿Qué tan romántica y especial sientes la relación?',
@@ -108,174 +84,339 @@ const AREAS = [
   }
 ];
 
-/* Etiquetas de valor para el display */
 const RATING_LABELS = {
-  1: 'Muy poco', 2: 'Poco', 3: 'Bajo', 4: 'Algo bajo', 5: 'Regular',
-  6: 'Algo bien', 7: 'Bien', 8: 'Muy bien', 9: 'Excelente', 10: '¡Perfecto! 💕'
+  1:'Muy poco', 2:'Poco', 3:'Bajo', 4:'Algo bajo', 5:'Regular',
+  6:'Algo bien', 7:'Bien', 8:'Muy bien', 9:'Excelente', 10:'¡Perfecto! 💕'
 };
 
-/* ── Estado de la app ────────────────────────────────────── */
+/* ── Estado global ───────────────────────────────────────── */
 let state = {
-  user: { name: '', email: '', role: '' },  // role: 'ella' | 'el'
+  fbUser:   null,   // Firebase Auth user
+  profile:  null,   // { name, role, email, coupleId, partnerEmail }
+  coupleId: null,
+  couple:   null,
+  isAdmin:  false,
   currentArea: 0,
-  answers: {},
-  charts: {}
+  answers:  {},
+  charts:   {},
+  surveys:  null,   // null = reload needed
 };
 
-/* ── Almacenamiento ──────────────────────────────────────── */
-const STORAGE_KEY = 'nawzapp_submissions';
+let _registering       = false;  // suppress onAuthStateChanged during registration
+let _adminPrevCoupleId = undefined; // undefined = not in admin-view-couple mode
+let dashFilter = { roles: ['ella', 'el'], area: 'global' };
 
-function loadSubmissions() {
+/* ══════════════════════════════════════════════════════════
+   AUTH LISTENER
+══════════════════════════════════════════════════════════ */
+auth.onAuthStateChanged(async user => {
+  if (_registering) return;
+  if (user) {
+    state.fbUser = user;
+    try { await _loadProfile(); } catch (e) { console.error(e); }
+    if (state.isAdmin) {
+      goView('view-admin');
+      loadAdminPanel();
+    } else {
+      _updateDashHeader();
+      goView('view-dashboard');
+    }
+  } else {
+    Object.assign(state, { fbUser:null, profile:null, coupleId:null, couple:null, isAdmin:false, surveys:null });
+    goView('view-login');
+  }
+});
+
+async function _loadProfile() {
+  const uid  = state.fbUser.uid;
+  const snap = await db.collection('users').doc(uid).get();
+  state.profile = snap.data() || null;
+
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch { return []; }
+    const aSnap = await db.collection('config').doc('admin').get();
+    state.isAdmin = aSnap.exists && aSnap.data().email === state.fbUser.email;
+  } catch { state.isAdmin = false; }
+
+  state.coupleId = state.profile?.coupleId || null;
+  if (state.coupleId) {
+    const cSnap = await db.collection('couples').doc(state.coupleId).get();
+    state.couple = cSnap.exists ? cSnap.data() : null;
+  } else {
+    state.couple = null;
+  }
 }
 
-function saveSubmissions(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-/* ── Navegación de vistas ────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   NAVEGACIÓN
+══════════════════════════════════════════════════════════ */
 function goView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const v = document.getElementById(id);
-  if (v) {
-    v.classList.add('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  if (v) { v.classList.add('active'); window.scrollTo({ top:0, behavior:'smooth' }); }
   if (id === 'view-dashboard') renderDashboard();
 }
 
-/* ── LOGIN ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════════════════ */
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('inp-email').value.trim();
+  const pass  = document.getElementById('inp-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch (err) {
+    errEl.textContent = _loginMsg(err.code);
+    errEl.classList.remove('hidden');
+    document.getElementById('inp-pass').value = '';
+  }
+});
 
-/* Selector de rol */
-let selectedRole = '';
-document.querySelectorAll('.role-btn').forEach(btn => {
+function _loginMsg(code) {
+  return ({
+    'auth/user-not-found':    'No existe cuenta con ese email 🙈',
+    'auth/wrong-password':    'Contraseña incorrecta 🙈',
+    'auth/invalid-email':     'Email inválido 📧',
+    'auth/too-many-requests': 'Demasiados intentos, esperá un momento ⏳',
+    'auth/invalid-credential':'Email o contraseña incorrectos 🙈',
+  })[code] || 'Error al ingresar. Intentá de nuevo.';
+}
+
+document.getElementById('eye-btn').addEventListener('click', () => {
+  const i = document.getElementById('inp-pass');
+  i.type = i.type === 'password' ? 'text' : 'password';
+});
+
+document.getElementById('go-register-btn').addEventListener('click', () => goView('view-register'));
+
+/* ══════════════════════════════════════════════════════════
+   REGISTRO
+══════════════════════════════════════════════════════════ */
+let _regRole = '';
+
+document.querySelectorAll('#view-register .role-btn').forEach(btn => {
   btn.addEventListener('click', function () {
-    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#view-register .role-btn').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    selectedRole = this.dataset.role;
-    document.getElementById('role-error').classList.add('hidden');
+    _regRole = this.dataset.role;
   });
 });
 
-document.getElementById('login-form').addEventListener('submit', function (e) {
+document.getElementById('reg-eye-btn')?.addEventListener('click', () => {
+  const i = document.getElementById('reg-pass');
+  i.type = i.type === 'password' ? 'text' : 'password';
+});
+document.getElementById('reg-eye-btn2')?.addEventListener('click', () => {
+  const i = document.getElementById('reg-pass2');
+  i.type = i.type === 'password' ? 'text' : 'password';
+});
+
+document.getElementById('go-login-btn').addEventListener('click', () => goView('view-login'));
+
+document.getElementById('register-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const name  = document.getElementById('inp-name').value.trim();
-  const pass  = document.getElementById('inp-pass').value;
-  const passErr = document.getElementById('login-error');
-  const roleErr = document.getElementById('role-error');
+  const name    = document.getElementById('reg-name').value.trim();
+  const email   = document.getElementById('reg-email').value.trim().toLowerCase();
+  const pass    = document.getElementById('reg-pass').value;
+  const pass2   = document.getElementById('reg-pass2').value;
+  const partner = document.getElementById('reg-partner').value.trim().toLowerCase();
 
-  if (!selectedRole) {
-    roleErr.classList.remove('hidden');
-    return;
-  }
-  roleErr.classList.add('hidden');
+  if (!name)            return _regErr('Ingresá tu nombre ✨');
+  if (!_regRole)        return _regErr('Seleccioná tu rol: Ella o Él 💕');
+  if (pass.length < 6)  return _regErr('La contraseña debe tener al menos 6 caracteres');
+  if (pass !== pass2)   return _regErr('Las contraseñas no coinciden 🙈');
+  if (email === partner) return _regErr('Tu email y el de tu pareja no pueden ser iguales 😅');
 
-  if (pass !== SECRET_PASS) {
-    passErr.classList.remove('hidden');
-    document.getElementById('inp-pass').value = '';
-    document.getElementById('inp-pass').focus();
-    return;
+  document.getElementById('register-error').classList.add('hidden');
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+
+  try {
+    await _doRegister(name, email, pass, _regRole, partner);
+    _updateDashHeader();
+    goView('view-dashboard');
+  } catch (err) {
+    _regErr(_registerMsg(err.code) || err.message);
+    btn.disabled = false;
   }
-  passErr.classList.add('hidden');
-  state.user = { name, role: selectedRole };
-  state.currentArea = 0;
-  state.answers = {};
+});
+
+function _regErr(msg) {
+  const el = document.getElementById('register-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function _registerMsg(code) {
+  return ({
+    'auth/email-already-in-use': 'Ya existe una cuenta con ese email 📧',
+    'auth/invalid-email':        'El email no es válido 📧',
+    'auth/weak-password':        'Contraseña débil, usá al menos 6 caracteres',
+  })[code];
+}
+
+async function _doRegister(name, email, pass, role, partnerEmail) {
+  _registering = true;
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    const uid  = cred.user.uid;
+    state.fbUser = cred.user;
+
+    // Check if partner already registered and declared this email as their partner
+    const partnerQ = await db.collection('users')
+      .where('email', '==', partnerEmail)
+      .where('partnerEmail', '==', email)
+      .get();
+
+    let coupleId = null;
+
+    if (!partnerQ.empty) {
+      // Partner found — link to their pending couple
+      const partnerDoc  = partnerQ.docs[0];
+      const partnerData = partnerDoc.data();
+      coupleId = partnerData.coupleId;
+
+      const coupleUpdate = { status: 'active' };
+      if (role === 'ella') { coupleUpdate.ellaUid = uid; coupleUpdate.ellaEmail = email; }
+      else                 { coupleUpdate.elUid   = uid; coupleUpdate.elEmail   = email; }
+      await db.collection('couples').doc(coupleId).update(coupleUpdate);
+
+      // Migrate partner's personal surveys → couple subcollection
+      const pendingSnap = await db.collection('users').doc(partnerDoc.id).collection('surveys').get();
+      if (!pendingSnap.empty) {
+        const batch = db.batch();
+        pendingSnap.docs.forEach(s => {
+          batch.set(db.collection('couples').doc(coupleId).collection('surveys').doc(s.id), s.data());
+          batch.delete(s.ref);
+        });
+        await batch.commit();
+      }
+
+      // Reload couple state for partner (they'll get it on next load)
+      await db.collection('users').doc(partnerDoc.id).update({ coupleId });
+
+    } else {
+      // No matching partner yet — create pending couple
+      const coupleRef  = db.collection('couples').doc();
+      coupleId = coupleRef.id;
+      const coupleData = { status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if (role === 'ella') { coupleData.ellaUid = uid; coupleData.ellaEmail = email; coupleData.elEmail   = partnerEmail; }
+      else                 { coupleData.elUid   = uid; coupleData.elEmail   = email; coupleData.ellaEmail = partnerEmail; }
+      await coupleRef.set(coupleData);
+    }
+
+    // Create user document
+    await db.collection('users').doc(uid).set({
+      email, name, role, partnerEmail, coupleId,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Set local state
+    state.profile  = { email, name, role, partnerEmail, coupleId };
+    state.coupleId = coupleId;
+    state.isAdmin  = false;
+    state.surveys  = null;
+
+    if (coupleId) {
+      const cSnap = await db.collection('couples').doc(coupleId).get();
+      state.couple = cSnap.exists ? cSnap.data() : null;
+    }
+  } finally {
+    _registering = false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD HEADER & SESSION BUTTONS
+══════════════════════════════════════════════════════════ */
+function _updateDashHeader() {
+  if (!state.profile) return;
+  const roleLabel = state.profile.role === 'el' ? '💙 Él' : '💗 Ella';
+  document.getElementById('dash-user-info').textContent =
+    `${roleLabel} · ${state.profile.name}`;
+
+  const banner = document.getElementById('couple-pending-banner');
+  if (state.couple?.status === 'pending') banner.classList.remove('hidden');
+  else banner.classList.add('hidden');
+}
+
+document.getElementById('dash-survey-btn')?.addEventListener('click', () => {
+  state.currentArea = 0; state.answers = {};
   startSurvey();
 });
 
-/* Toggle mostrar/ocultar contraseña */
-document.getElementById('eye-btn').addEventListener('click', function () {
-  const inp = document.getElementById('inp-pass');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
+document.getElementById('dash-logout-btn')?.addEventListener('click', async () => {
+  if (_adminPrevCoupleId !== undefined) {
+    _exitAdminCoupleView();
+  } else {
+    state.surveys = null;
+    await auth.signOut();
+  }
 });
 
-/* Ir al dashboard desde el footer */
-document.getElementById('go-dashboard-btn').addEventListener('click', function () {
-  goView('view-dashboard');
-});
+document.getElementById('admin-logout-btn')?.addEventListener('click', () => auth.signOut());
 
-/* ── SURVEY ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   ENCUESTA
+══════════════════════════════════════════════════════════ */
 function startSurvey() {
-  state.currentArea = 0;
+  state.currentArea = 0; state.answers = {};
   renderArea(0);
   goView('view-survey');
 }
 
 function renderArea(areaIdx) {
-  const area = AREAS[areaIdx];
+  const area  = AREAS[areaIdx];
   const total = AREAS.length;
+  const wrap  = document.querySelector('.survey-wrap');
 
-  /* Clase de área en el wrapper */
-  const wrap = document.querySelector('.survey-wrap');
   AREAS.forEach(a => wrap.classList.remove('area--' + a.id));
   wrap.classList.add('area--' + area.id);
 
-  /* Progreso */
-  const pct = ((areaIdx) / total) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-fill').style.width = (areaIdx / total * 100) + '%';
 
-  /* Meta */
   const badge = document.getElementById('area-badge');
-  badge.textContent = area.badge;
+  badge.textContent   = area.badge;
   badge.style.background = area.bg;
-  badge.style.color = area.textColor;
+  badge.style.color      = area.textColor;
 
-  document.getElementById('step-counter').textContent =
-    `${areaIdx + 1} / ${total}`;
-
-  /* Header */
+  document.getElementById('step-counter').textContent  = `${areaIdx + 1} / ${total}`;
   document.getElementById('area-icon-big').textContent = area.icon;
-  document.getElementById('area-title').textContent = area.title;
-  document.getElementById('area-desc').textContent  = area.desc;
+  document.getElementById('area-title').textContent    = area.title;
+  document.getElementById('area-desc').textContent     = area.desc;
 
-  /* Preguntas */
   const container = document.getElementById('questions-list');
   container.innerHTML = '';
 
-  const saved = state.answers[area.id] || {};
-  const questions = state.user.role === 'el' ? area.questionsEl : area.questionsElla;
+  const saved     = state.answers[area.id] || {};
+  const questions = state.profile?.role === 'el' ? area.questionsEl : area.questionsElla;
 
   questions.forEach((qText, qIdx) => {
     const card = document.createElement('div');
     card.className = 'q-card';
     card.id = `qcard-${areaIdx}-${qIdx}`;
-
     card.innerHTML = `
       <div class="q-number">Pregunta ${qIdx + 1}</div>
       <p class="q-text">${qText}</p>
       <div class="rating-wrap">
         <div class="rating-row" id="rating-${areaIdx}-${qIdx}">
           ${[1,2,3,4,5,6,7,8,9,10].map(n => `
-            <button type="button"
-              class="rating-btn${saved[qIdx] === n ? ' selected' : ''}"
-              style="color: ${area.color}"
-              data-val="${n}"
-              onclick="selectRating(${areaIdx},${qIdx},${n})"
-              aria-label="Valor ${n}"
-            ><span>${n}</span></button>
-          `).join('')}
+            <button type="button" class="rating-btn${saved[qIdx]===n?' selected':''}"
+              style="color:${area.color}" data-val="${n}"
+              onclick="selectRating(${areaIdx},${qIdx},${n})" aria-label="Valor ${n}">
+              <span>${n}</span></button>`).join('')}
         </div>
-        <div class="rating-labels">
-          <span>Poco 😕</span>
-          <span>¡Mucho! 💕</span>
-        </div>
-        <div class="rating-val ${saved[qIdx] ? 'has-val' : ''}" id="rval-${areaIdx}-${qIdx}">
-          ${saved[qIdx] ? RATING_LABELS[saved[qIdx]] : ''}
-        </div>
-      </div>
-    `;
+        <div class="rating-labels"><span>Poco 😕</span><span>¡Mucho! 💕</span></div>
+        <div class="rating-val${saved[qIdx]?' has-val':''}" id="rval-${areaIdx}-${qIdx}">
+          ${saved[qIdx] ? RATING_LABELS[saved[qIdx]] : ''}</div>
+      </div>`;
     container.appendChild(card);
   });
 
-  /* Botón anterior */
-  const btnPrev = document.getElementById('btn-prev');
-  const btnNext = document.getElementById('btn-next');
-  btnPrev.style.visibility = areaIdx === 0 ? 'hidden' : 'visible';
-
-  const isLast = areaIdx === total - 1;
-  btnNext.textContent = isLast ? 'Enviar encuesta 💕' : 'Siguiente →';
+  document.getElementById('btn-prev').style.visibility = areaIdx === 0 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').textContent = areaIdx === total - 1 ? 'Enviar encuesta 💕' : 'Siguiente →';
 }
 
 function selectRating(areaIdx, qIdx, val) {
@@ -283,50 +424,38 @@ function selectRating(areaIdx, qIdx, val) {
   if (!state.answers[area.id]) state.answers[area.id] = {};
   state.answers[area.id][qIdx] = val;
 
-  /* Actualizar botones */
-  const row = document.getElementById(`rating-${areaIdx}-${qIdx}`);
-  row.querySelectorAll('.rating-btn').forEach(btn => {
-    btn.classList.toggle('selected', Number(btn.dataset.val) === val);
-  });
+  document.getElementById(`rating-${areaIdx}-${qIdx}`).querySelectorAll('.rating-btn')
+    .forEach(btn => btn.classList.toggle('selected', +btn.dataset.val === val));
 
-  /* Actualizar etiqueta de valor */
   const valEl = document.getElementById(`rval-${areaIdx}-${qIdx}`);
   valEl.textContent = RATING_LABELS[val];
   valEl.classList.add('has-val');
-
-  /* Quitar clase de advertencia si estaba */
   document.getElementById(`qcard-${areaIdx}-${qIdx}`).classList.remove('unanswered');
 }
 
 function nextArea() {
-  const area = AREAS[state.currentArea];
+  const area      = AREAS[state.currentArea];
+  const saved     = state.answers[area.id] || {};
+  const questions = state.profile?.role === 'el' ? area.questionsEl : area.questionsElla;
+  let allOk = true;
 
-  /* Validar que todas las preguntas están respondidas */
-  const saved = state.answers[area.id] || {};
-  let allAnswered = true;
-  const questions = state.user.role === 'el' ? area.questionsEl : area.questionsElla;
   questions.forEach((_, qIdx) => {
     if (saved[qIdx] === undefined) {
-      allAnswered = false;
+      allOk = false;
       const card = document.getElementById(`qcard-${state.currentArea}-${qIdx}`);
-      card.classList.add('unanswered');
-      /* Re-trigger animation */
-      void card.offsetWidth;
-      card.classList.add('unanswered');
+      card.classList.remove('unanswered'); void card.offsetWidth; card.classList.add('unanswered');
     }
   });
 
-  if (!allAnswered) {
-    /* Scroll a la primera sin responder */
-    const first = document.querySelector('.q-card.unanswered');
-    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (!allOk) {
+    document.querySelector('.q-card.unanswered')?.scrollIntoView({ behavior:'smooth', block:'center' });
     return;
   }
 
   if (state.currentArea < AREAS.length - 1) {
     state.currentArea++;
     renderArea(state.currentArea);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top:0, behavior:'smooth' });
   } else {
     submitSurvey();
   }
@@ -336,67 +465,100 @@ function prevArea() {
   if (state.currentArea > 0) {
     state.currentArea--;
     renderArea(state.currentArea);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top:0, behavior:'smooth' });
   }
 }
 
-/* ── SUBMIT ──────────────────────────────────────────────── */
-function submitSurvey() {
-  /* Calcular promedios por área */
+/* ══════════════════════════════════════════════════════════
+   SUBMIT
+══════════════════════════════════════════════════════════ */
+async function submitSurvey() {
   const areaScores = {};
   AREAS.forEach(area => {
-    const ans = state.answers[area.id] || {};
-    const vals = Object.values(ans);
+    const vals = Object.values(state.answers[area.id] || {});
     areaScores[area.id] = vals.length
-      ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)
-      : 0;
+      ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : 0;
   });
+  const overall = +(Object.values(areaScores).reduce((a, b) => a + b, 0) / AREAS.length).toFixed(2);
 
-  const overall = +(Object.values(areaScores).reduce((a,b)=>a+b,0) / AREAS.length).toFixed(2);
-
+  const now = new Date();
   const submission = {
-    id:         Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    date:       new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' }),
-    dateISO:    new Date().toISOString().split('T')[0],
-    name:       state.user.name,
-    role:       state.user.role,
-    answers:    JSON.parse(JSON.stringify(state.answers)),
-    areaScores,
-    overall
+    dateISO:   now.toISOString().split('T')[0],
+    date:      now.toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' }),
+    name:      state.profile.name,
+    role:      state.profile.role,
+    uid:       state.fbUser.uid,
+    answers:   JSON.parse(JSON.stringify(state.answers)),
+    areaScores, overall,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
-  const submissions = loadSubmissions();
-  submissions.push(submission);
-  saveSubmissions(submissions);
+  const btn = document.getElementById('btn-next');
+  btn.disabled = true;
 
-  showThanks(submission);
+  try {
+    const col = state.coupleId
+      ? db.collection('couples').doc(state.coupleId).collection('surveys')
+      : db.collection('users').doc(state.fbUser.uid).collection('surveys');
+    await col.add(submission);
+    state.surveys = null;
+    showThanks(submission);
+  } catch {
+    alert('Error al guardar. Verificá tu conexión e intentá de nuevo.');
+    btn.disabled = false;
+  }
 }
 
-/* ── THANKS ──────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   THANKS
+══════════════════════════════════════════════════════════ */
 function showThanks(submission) {
-  document.getElementById('thanks-name').textContent = state.user.name;
+  document.getElementById('thanks-name').textContent = state.profile.name;
   document.getElementById('overall-val').textContent = submission.overall;
-
-  const grid = document.getElementById('area-scores');
-  grid.innerHTML = AREAS.map(area => `
-    <div class="score-mini-card" style="border-top: 3px solid ${area.color}">
+  document.getElementById('area-scores').innerHTML = AREAS.map(area => `
+    <div class="score-mini-card" style="border-top:3px solid ${area.color}">
       <span class="score-mini-icon">${area.icon}</span>
       <span class="score-mini-name">${area.title}</span>
-      <span class="score-mini-val" style="color:${area.textColor}">
-        ${submission.areaScores[area.id]}
-      </span>
-    </div>
-  `).join('');
-
+      <span class="score-mini-val" style="color:${area.textColor}">${submission.areaScores[area.id]}</span>
+    </div>`).join('');
   goView('view-thanks');
 }
 
-/* ── DASHBOARD ───────────────────────────────────────────── */
-/* roles: array de roles activos, e.g. ['ella','el'] | ['ella'] | ['el'] */
-let dashFilter = { roles: ['ella', 'el'], area: 'global' };
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════════════ */
+async function _loadSurveys() {
+  if (state.surveys !== null) return state.surveys;
+  if (!state.fbUser) return [];
 
-function renderDashboard() {
-  const all = loadSubmissions();
+  let snap;
+  if (state.coupleId) {
+    snap = await db.collection('couples').doc(state.coupleId)
+      .collection('surveys').orderBy('createdAt', 'asc').get();
+  } else {
+    snap = await db.collection('users').doc(state.fbUser.uid)
+      .collection('surveys').orderBy('createdAt', 'asc').get();
+  }
+
+  state.surveys = snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id, ...data,
+      dateISO: data.dateISO || data.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || '',
+      date:    data.date    || data.dateISO || '',
+    };
+  });
+  return state.surveys;
+}
+
+async function renderDashboard() {
+  if (!state.fbUser) return;
+  _updateDashHeader();
+
+  let all;
+  try { all = await _loadSurveys(); }
+  catch { all = []; }
+
   if (all.length === 0) {
     document.getElementById('dash-empty').classList.remove('hidden');
     document.getElementById('dash-content').classList.add('hidden');
@@ -406,174 +568,135 @@ function renderDashboard() {
   document.getElementById('dash-content').classList.remove('hidden');
   renderHistTable(all);
   syncFilterButtons();
-  rerenderDashboardCharts();
+  rerenderDashboardCharts(all);
 }
 
-/* Cambio de área */
 function applyDashFilter(changes) {
   if (changes.area !== undefined) dashFilter.area = changes.area;
   syncFilterButtons();
-  rerenderDashboardCharts();
+  _loadSurveys().then(all => rerenderDashboardCharts(all));
 }
 
-/* Toggle independiente de rol */
 function toggleRoleFilter(role) {
   if (dashFilter.roles.includes(role)) {
-    if (dashFilter.roles.length > 1) {
-      dashFilter.roles = dashFilter.roles.filter(r => r !== role);
-    }
-    /* Si es el último activo, no lo desactiva */
+    if (dashFilter.roles.length > 1) dashFilter.roles = dashFilter.roles.filter(r => r !== role);
   } else {
     dashFilter.roles = [...dashFilter.roles, role];
   }
   syncFilterButtons();
-  rerenderDashboardCharts();
+  _loadSurveys().then(all => rerenderDashboardCharts(all));
 }
 
 function syncFilterButtons() {
-  document.querySelectorAll('#filter-area .filter-btn').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.area === dashFilter.area)
-  );
-  document.querySelectorAll('#filter-role .filter-btn').forEach(btn =>
-    btn.classList.toggle('active', dashFilter.roles.includes(btn.dataset.role))
-  );
+  document.querySelectorAll('#filter-area .filter-btn')
+    .forEach(btn => btn.classList.toggle('active', btn.dataset.area === dashFilter.area));
+  document.querySelectorAll('#filter-role .filter-btn')
+    .forEach(btn => btn.classList.toggle('active', dashFilter.roles.includes(btn.dataset.role)));
 }
 
-function rerenderDashboardCharts() {
-  ['chart-line', 'chart-radar'].forEach(id => {
+function rerenderDashboardCharts(all) {
+  ['chart-line','chart-radar'].forEach(id => {
     if (state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
   });
 
-  const all   = loadSubmissions();
-  const roles = dashFilter.roles;
-  const area  = dashFilter.area;
-
-  const byRoles = all.filter(s => roles.includes(s.role ?? 'ella'));
+  const roles    = dashFilter.roles;
+  const area     = dashFilter.area;
+  const byRoles  = all.filter(s => roles.includes(s.role ?? 'ella'));
   if (byRoles.length === 0) return;
 
-  const last = byRoles[byRoles.length - 1];
-
+  const last     = byRoles[byRoles.length - 1];
   const areaObj  = AREAS.find(a => a.id === area);
-  const areaName = area === 'global' ? 'Global' : areaObj?.title ?? area;
-  const rolesLabel = roles.length === 2
-    ? '💗 Ella  &  💙 Él'
+  const areaName = area === 'global' ? 'Global' : (areaObj?.title ?? area);
+  const rolesLabel = roles.length === 2 ? '💗 Ella  &  💙 Él'
     : roles[0] === 'el' ? '💙 Él' : '💗 Ella';
 
-  document.getElementById('chart-line-label').textContent =
-    `El pulso de nuestra relación — ${areaName}`;
-  document.getElementById('dash-last-date').textContent =
-    `${rolesLabel} · Última encuesta: ${last.date} — ${last.name}`;
+  document.getElementById('chart-line-label').textContent = `El pulso de nuestra relación — ${areaName}`;
+  document.getElementById('dash-last-date').textContent   = `${rolesLabel} · Última: ${last.date} — ${last.name}`;
 
   renderAreaCards(last, byRoles);
   renderRadarChart(last);
   renderLineChartFiltered(all, roles, area);
 }
 
-/* ─── Cards de área ─────────────────────────────────────── */
 function renderAreaCards(last, submissions) {
-  const container = document.getElementById('dash-area-cards');
-
-  container.innerHTML = AREAS.map(area => {
+  document.getElementById('dash-area-cards').innerHTML = AREAS.map(area => {
     const score = last.areaScores[area.id] ?? '-';
-    /* Tendencia vs penúltima */
     let trend = '';
     if (submissions.length >= 2) {
       const prev = submissions[submissions.length - 2];
       const diff = (last.areaScores[area.id] - (prev.areaScores[area.id] || 0)).toFixed(1);
-      trend = diff > 0
-        ? `↑ +${diff} vs. anterior`
-        : diff < 0
-          ? `↓ ${diff} vs. anterior`
-          : `= igual que anterior`;
+      trend = diff > 0 ? `↑ +${diff} vs. anterior` : diff < 0 ? `↓ ${diff} vs. anterior` : `= igual que anterior`;
     }
-
     return `
       <div class="dash-area-card" style="background:${area.bg}">
         <span class="dac-icon">${area.icon}</span>
         <div class="dac-info">
-          <div class="dac-name" style="color:${area.textColor}">${area.title}</div>
+          <div class="dac-name"  style="color:${area.textColor}">${area.title}</div>
           <div class="dac-score" style="color:${area.textColor}">${score}</div>
           ${trend ? `<div class="dac-trend" style="color:${area.textColor}">${trend}</div>` : ''}
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
-/* ─── Helper: score de un submission según área ─────────── */
-function getScoreForArea(submission, area) {
-  return area === 'global' ? submission.overall : (submission.areaScores[area] ?? null);
+function getScoreForArea(s, area) {
+  return area === 'global' ? s.overall : (s.areaScores[area] ?? null);
 }
 
-/* ─── Opciones base de gráfica de línea ─────────────────── */
 function lineChartOptions() {
   return {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode:'index', intersect:false },
     plugins: {
-      legend: {
-        position: 'bottom',
-        labels: { font: { family: 'Nunito', size: 12 }, color: '#9D174D', padding: 16, boxWidth: 14, usePointStyle: true }
-      },
+      legend: { position:'bottom', labels:{ font:{family:'Nunito',size:12}, color:'#9D174D', padding:16, boxWidth:14, usePointStyle:true } },
       tooltip: {
-        backgroundColor: '#FDF2F8', titleColor: '#831843', bodyColor: '#9D174D',
-        borderColor: '#FBCFE8', borderWidth: 1,
+        backgroundColor:'#FDF2F8', titleColor:'#831843', bodyColor:'#9D174D',
+        borderColor:'#FBCFE8', borderWidth:1,
         callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}` }
       }
     },
     scales: {
       x: {
-        grid: { color: '#FDF2F8' },
+        grid: { color:'#FDF2F8' },
         ticks: {
-          font: { family: 'Nunito', size: 10 },
-          color: '#C4859E',
-          maxRotation: 35,
+          font:{family:'Nunito',size:10}, color:'#C4859E', maxRotation:35,
           callback: function(val) {
             const label = this.getLabelForValue(val);
             if (!label) return val;
-            const [, mm, dd] = label.split('-');
+            const [,mm,dd] = label.split('-');
             const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
             return `${parseInt(dd)} ${months[parseInt(mm)-1]}`;
           }
         }
       },
-      y: { min: 0, max: 10, grid: { color: '#FDF2F8' }, ticks: { font: { family: 'Nunito', size: 10 }, color: '#C4859E', stepSize: 2 } }
+      y: { min:0, max:10, grid:{color:'#FDF2F8'}, ticks:{font:{family:'Nunito',size:10}, color:'#C4859E', stepSize:2} }
     }
   };
 }
 
-/* ─── Gráfica de línea cruzada: Área × Roles[] ──────────── */
 function renderLineChartFiltered(all, roles, area) {
-  const areaName = area === 'global'
-    ? 'Global'
-    : AREAS.find(a => a.id === area)?.title ?? area;
-
+  const areaName = area === 'global' ? 'Global' : AREAS.find(a => a.id === area)?.title ?? area;
   const ROLE_CFG = {
-    ella: { label: '💗 Ella', color: '#F472B6', bg: 'rgba(244,114,182,0.1)',  fill: 'rgba(244,114,182,0.12)' },
-    el:   { label: '💙 Él',   color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',   fill: 'rgba(96,165,250,0.12)'  },
+    ella: { label:'💗 Ella', color:'#F472B6', fill:'rgba(244,114,182,0.12)' },
+    el:   { label:'💙 Él',   color:'#60A5FA', fill:'rgba(96,165,250,0.12)'  },
   };
 
-  const datasets = [];
-  let labels;
+  let labels, datasets = [];
 
   if (roles.length === 2) {
-    /* Ambos activos — fechas fusionadas */
-    const allDates = [...new Set(all.map(s => s.dateISO))].sort();
-    labels = allDates;
+    labels = [...new Set(all.map(s => s.dateISO))].sort();
     roles.forEach(role => {
       const subs = all.filter(s => (s.role ?? 'ella') === role);
       const cfg  = ROLE_CFG[role];
       datasets.push({
         label: `${cfg.label} — ${areaName}`,
-        data:  allDates.map(d => { const m = subs.find(s => s.dateISO === d); return m ? getScoreForArea(m, area) : null; }),
-        borderColor: cfg.color, backgroundColor: cfg.bg,
-        borderWidth: 2.5, tension: 0.35, fill: false, spanGaps: true,
-        pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: cfg.color
+        data:  labels.map(d => { const m = subs.find(s => s.dateISO === d); return m ? getScoreForArea(m, area) : null; }),
+        borderColor:cfg.color, backgroundColor:cfg.fill,
+        borderWidth:2.5, tension:0.35, fill:false, spanGaps:true,
+        pointRadius:5, pointHoverRadius:8, pointBackgroundColor:cfg.color
       });
     });
   } else {
-    /* Un solo rol activo */
     const role = roles[0];
     const subs = all.filter(s => (s.role ?? 'ella') === role);
     const cfg  = ROLE_CFG[role];
@@ -581,155 +704,357 @@ function renderLineChartFiltered(all, roles, area) {
     datasets.push({
       label: `${cfg.label} — ${areaName}`,
       data:  subs.map(s => getScoreForArea(s, area)),
-      borderColor: cfg.color, backgroundColor: cfg.fill,
-      borderWidth: 3, tension: 0.35, fill: true, spanGaps: false,
-      pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: cfg.color
+      borderColor:cfg.color, backgroundColor:cfg.fill,
+      borderWidth:3, tension:0.35, fill:true, spanGaps:false,
+      pointRadius:5, pointHoverRadius:8, pointBackgroundColor:cfg.color
     });
   }
 
   const ctx = document.getElementById('chart-line').getContext('2d');
-  state.charts['chart-line'] = new Chart(ctx, {
-    type: 'line',
-    data: { labels, datasets },
-    options: lineChartOptions()
-  });
+  state.charts['chart-line'] = new Chart(ctx, { type:'line', data:{labels,datasets}, options:lineChartOptions() });
 }
 
-/* ─── Gráfica de radar ──────────────────────────────────── */
 function renderRadarChart(last) {
-  const labels = AREAS.map(a => a.title);
-  const data   = AREAS.map(a => last.areaScores[a.id] ?? 0);
-
   const ctx = document.getElementById('chart-radar').getContext('2d');
   state.charts['chart-radar'] = new Chart(ctx, {
     type: 'radar',
     data: {
-      labels,
+      labels: AREAS.map(a => a.title),
       datasets: [{
         label: `${last.name} · ${last.dateISO}`,
-        data,
-        borderColor: '#F472B6',
-        backgroundColor: 'rgba(244,114,182,0.2)',
-        borderWidth: 2.5,
-        pointBackgroundColor: AREAS.map(a => a.color),
-        pointRadius: 5,
-        pointHoverRadius: 7,
+        data:  AREAS.map(a => last.areaScores[a.id] ?? 0),
+        borderColor:'#F472B6', backgroundColor:'rgba(244,114,182,0.2)', borderWidth:2.5,
+        pointBackgroundColor: AREAS.map(a => a.color), pointRadius:5, pointHoverRadius:7,
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          labels: {
-            font: { family: 'Nunito', size: 11 },
-            color: '#9D174D',
-          }
-        }
-      },
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{ labels:{ font:{family:'Nunito',size:11}, color:'#9D174D' } } },
       scales: {
         r: {
-          min: 0, max: 10,
-          ticks: {
-            stepSize: 2,
-            font: { family: 'Nunito', size: 9 },
-            color: '#C4859E',
-            backdropColor: 'transparent'
-          },
-          grid:        { color: '#FBCFE8' },
-          angleLines:  { color: '#FBCFE8' },
-          pointLabels: { font: { family: 'Nunito', size: 11 }, color: '#9D174D' }
+          min:0, max:10,
+          ticks: { stepSize:2, font:{family:'Nunito',size:9}, color:'#C4859E', backdropColor:'transparent' },
+          grid:{ color:'#FBCFE8' }, angleLines:{ color:'#FBCFE8' },
+          pointLabels:{ font:{family:'Nunito',size:11}, color:'#9D174D' }
         }
       }
     }
   });
 }
 
-/* ─── Tabla de historial ────────────────────────────────── */
 function renderHistTable(submissions) {
   const tbody = document.getElementById('hist-body');
   tbody.innerHTML = '';
+  const scoreColor = v => v >= 8 ? '#047857' : v >= 6 ? '#B45309' : '#BE123C';
+  const pill = (v, color) => `<span class="score-pill" style="background:${color}33;color:${scoreColor(v)}">${v}</span>`;
 
-  /* Más reciente primero */
   [...submissions].reverse().forEach(s => {
-    const scoreColor = val =>
-      val >= 8 ? '#047857' : val >= 6 ? '#B45309' : '#BE123C';
-    const pill = (val, areaColor) =>
-      `<span class="score-pill" style="background:${areaColor}33;color:${scoreColor(val)}">${val}</span>`;
-
     const roleTag = s.role === 'el'
       ? '<span style="color:#1D4ED8;font-weight:700">💙 Él</span>'
       : '<span style="color:#BE123C;font-weight:700">💗 Ella</span>';
-
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${roleTag}</td>
       <td>${s.dateISO}</td>
       <td>${s.name}</td>
-      <td>${pill(s.areaScores.emocional,    AREAS[0].color)}</td>
-      <td>${pill(s.areaScores.fisico,       AREAS[1].color)}</td>
-      <td>${pill(s.areaScores.crecimiento,  AREAS[2].color)}</td>
-      <td>${pill(s.areaScores.social,       AREAS[3].color)}</td>
-      <td>${pill(s.overall, '#F472B6')}</td>
-    `;
+      <td>${pill(s.areaScores.emocional,   AREAS[0].color)}</td>
+      <td>${pill(s.areaScores.fisico,      AREAS[1].color)}</td>
+      <td>${pill(s.areaScores.crecimiento, AREAS[2].color)}</td>
+      <td>${pill(s.areaScores.social,      AREAS[3].color)}</td>
+      <td>${pill(s.overall, '#F472B6')}</td>`;
     tbody.appendChild(tr);
   });
 }
 
-/* ── EXPORT / IMPORT ─────────────────────────────────────── */
-function exportJSON() {
-  const submissions = loadSubmissions();
-  if (submissions.length === 0) { alert('No hay datos para exportar.'); return; }
-
+/* ══════════════════════════════════════════════════════════
+   EXPORT / IMPORT JSON
+══════════════════════════════════════════════════════════ */
+async function exportJSON() {
+  const surveys = await _loadSurveys();
+  if (surveys.length === 0) { alert('No hay datos para exportar.'); return; }
   const blob = new Blob(
-    [JSON.stringify({ app: 'ÑawzApp', exportedAt: new Date().toISOString(), submissions }, null, 2)],
-    { type: 'application/json' }
+    [JSON.stringify({ app:'ÑawzApp', exportedAt:new Date().toISOString(), submissions:surveys }, null, 2)],
+    { type:'application/json' }
   );
   const url  = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href  = url;
+  link.href = url;
   link.download = `nawzapp_${new Date().toISOString().split('T')[0]}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }
 
-function importJSON(event) {
+async function importJSON(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
-      const parsed = JSON.parse(e.target.result);
+      const parsed   = JSON.parse(e.target.result);
       const incoming = parsed.submissions || (Array.isArray(parsed) ? parsed : null);
       if (!incoming) throw new Error('Formato inválido');
 
-      const existing = loadSubmissions();
-      /* Merge — evitar duplicados por id */
+      const existing    = await _loadSurveys();
       const existingIds = new Set(existing.map(s => s.id));
-      const merged = [...existing, ...incoming.filter(s => !existingIds.has(s.id))];
-      saveSubmissions(merged);
+      const toImport    = incoming.filter(s => !existingIds.has(s.id));
+      if (toImport.length === 0) { alert('No hay datos nuevos para importar.'); return; }
 
-      alert(`✅ Importados ${incoming.length} registros. Total: ${merged.length}`);
+      const col   = _surveysCol();
+      const batch = db.batch();
+      toImport.forEach(s => {
+        const { id, createdAt, ...data } = s;
+        batch.set(col.doc(id || col.doc().id), {
+          ...data, importedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      state.surveys = null;
+      alert(`✅ Importados ${toImport.length} registros.`);
       renderDashboard();
-    } catch (err) {
-      alert('Error al importar: archivo JSON inválido.');
-    }
+    } catch { alert('Error al importar: archivo JSON inválido.'); }
   };
   reader.readAsText(file);
-  event.target.value = ''; // reset input
+  event.target.value = '';
 }
 
-function clearAllData() {
-  if (confirm('¿Segura que quieres borrar TODOS los datos?\nEsta acción no se puede deshacer. 🙈')) {
-    localStorage.removeItem(STORAGE_KEY);
-    renderDashboard();
-  }
+async function clearAllData() {
+  if (!confirm('¿Borrar TODAS las encuestas guardadas?\nEsta acción no se puede deshacer. 🙈')) return;
+  const surveys = await _loadSurveys();
+  const col     = _surveysCol();
+  const batch   = db.batch();
+  surveys.forEach(s => batch.delete(col.doc(s.id)));
+  await batch.commit();
+  state.surveys = null;
+  renderDashboard();
 }
 
-/* ── INICIALIZACIÓN ──────────────────────────────────────── */
-(function init() {
-  /* Si la URL tiene #dashboard, ir directo */
-  if (window.location.hash === '#dashboard') {
-    goView('view-dashboard');
+function _surveysCol() {
+  return state.coupleId
+    ? db.collection('couples').doc(state.coupleId).collection('surveys')
+    : db.collection('users').doc(state.fbUser.uid).collection('surveys');
+}
+
+/* ══════════════════════════════════════════════════════════
+   IMPORTAR DESDE LOCALSTORAGE
+══════════════════════════════════════════════════════════ */
+function openImportLocalModal() {
+  const raw  = localStorage.getItem('nawzapp_submissions');
+  const data = raw ? JSON.parse(raw) : [];
+
+  if (data.length === 0) {
+    alert('No hay encuestas guardadas en este dispositivo.');
+    return;
   }
-})();
+
+  document.getElementById('local-count').textContent = data.length;
+  document.getElementById('import-error').classList.add('hidden');
+  _renderLocalList(data);
+  document.getElementById('modal-import').classList.remove('hidden');
+}
+
+function _renderLocalList(surveys) {
+  const list = document.getElementById('local-surveys-list');
+  list.innerHTML = surveys.map((s, i) => `
+    <label class="local-survey-item" id="lsi-${i}">
+      <input type="checkbox" data-idx="${i}" checked>
+      <div class="local-survey-info">
+        <strong>${s.role === 'el' ? '💙 Él' : '💗 Ella'} · ${s.name}</strong>
+        <span>${s.dateISO} · Global: ${s.overall}</span>
+      </div>
+    </label>`).join('');
+
+  list.querySelectorAll('.local-survey-item').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT') return;
+      const cb = item.querySelector('input');
+      cb.checked = !cb.checked;
+      item.classList.toggle('selected', cb.checked);
+    });
+    const cb = item.querySelector('input');
+    item.classList.toggle('selected', cb.checked);
+    cb.addEventListener('change', () => item.classList.toggle('selected', cb.checked));
+  });
+}
+
+document.getElementById('modal-cancel-btn')?.addEventListener('click', () => {
+  document.getElementById('modal-import').classList.add('hidden');
+});
+
+document.getElementById('modal-confirm-btn')?.addEventListener('click', async () => {
+  const raw  = localStorage.getItem('nawzapp_submissions');
+  const data = raw ? JSON.parse(raw) : [];
+  const selected = [...document.querySelectorAll('#local-surveys-list input:checked')]
+    .map(cb => data[+cb.dataset.idx])
+    .filter(Boolean);
+
+  if (selected.length === 0) {
+    const errEl = document.getElementById('import-error');
+    errEl.textContent = 'Seleccioná al menos una encuesta para importar.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  document.getElementById('modal-confirm-btn').disabled = true;
+  try {
+    const existing    = await _loadSurveys();
+    const existingIds = new Set(existing.map(s => s.id));
+    const toImport    = selected.filter(s => !existingIds.has(s.id));
+
+    if (toImport.length > 0) {
+      const col   = _surveysCol();
+      const batch = db.batch();
+      toImport.forEach(s => {
+        const { id, createdAt, ...data } = s;
+        batch.set(col.doc(id || col.doc().id), {
+          ...data, importedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      state.surveys = null;
+    }
+
+    document.getElementById('modal-import').classList.add('hidden');
+    alert(`✅ Importadas ${toImport.length} encuesta${toImport.length !== 1 ? 's' : ''} nuevas.`);
+    if (document.getElementById('view-dashboard').classList.contains('active')) {
+      renderDashboard();
+    }
+  } catch {
+    const errEl = document.getElementById('import-error');
+    errEl.textContent = 'Error al importar. Verificá tu conexión.';
+    errEl.classList.remove('hidden');
+  }
+  document.getElementById('modal-confirm-btn').disabled = false;
+});
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN
+══════════════════════════════════════════════════════════ */
+async function loadAdminPanel() {
+  document.getElementById('admin-couples-list').innerHTML =
+    '<div class="admin-loading">Cargando parejas… 🌸</div>';
+
+  const couplesSnap = await db.collection('couples').get();
+  const couples = couplesSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  // Survey counts (parallel)
+  const counts = await Promise.all(
+    couples.map(async c => {
+      const s = await db.collection('couples').doc(c.id).collection('surveys').get();
+      return { id:c.id, count:s.size };
+    })
+  );
+  const countMap = Object.fromEntries(counts.map(x => [x.id, x.count]));
+
+  // Stats
+  const active  = couples.filter(c => c.status === 'active').length;
+  const pending = couples.filter(c => c.status === 'pending').length;
+  const totalS  = Object.values(countMap).reduce((a, b) => a + b, 0);
+  document.getElementById('stat-total').textContent   = couples.length;
+  document.getElementById('stat-active').textContent  = active;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('stat-surveys').textContent = totalS;
+
+  const list = document.getElementById('admin-couples-list');
+  if (couples.length === 0) {
+    list.innerHTML = '<div class="admin-loading">No hay parejas registradas aún 🌸</div>';
+    return;
+  }
+
+  list.innerHTML = couples.map(c => _renderCoupleCard(c, countMap[c.id] || 0)).join('');
+
+  // Toggle expand
+  list.querySelectorAll('.couple-card-head').forEach(head =>
+    head.addEventListener('click', () => head.closest('.couple-card').classList.toggle('open'))
+  );
+
+  // Delete buttons
+  list.querySelectorAll('.btn-delete-couple').forEach(btn =>
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Eliminar esta pareja y todas sus encuestas? No se puede deshacer.')) return;
+      await _deleteCouple(btn.dataset.coupleId);
+      loadAdminPanel();
+    })
+  );
+
+  // View surveys buttons
+  list.querySelectorAll('.btn-view-couple').forEach(btn =>
+    btn.addEventListener('click', () => adminViewCoupleDashboard(btn.dataset.coupleId))
+  );
+
+  // Admin's own localStorage import button
+  document.getElementById('admin-import-local-btn')?.addEventListener('click', openImportLocalModal);
+}
+
+function _renderCoupleCard(couple, surveyCount) {
+  const isActive   = couple.status === 'active';
+  const statusLbl  = isActive ? 'Activa' : 'Pendiente';
+  const statusCls  = isActive ? 'status--active' : 'status--pending';
+  const ellaLine   = couple.ellaEmail
+    ? `<div class="couple-member-row"><span class="role-dot">💗</span><span class="couple-member-email">${couple.ellaEmail}</span></div>` : '';
+  const elLine     = couple.elEmail
+    ? `<div class="couple-member-row"><span class="role-dot">💙</span><span class="couple-member-email">${couple.elEmail}</span></div>` : '';
+  const createdDate = couple.createdAt?.toDate
+    ? couple.createdAt.toDate().toLocaleDateString('es-ES') : '—';
+
+  return `
+    <div class="couple-card" data-couple-id="${couple.id}">
+      <div class="couple-card-head">
+        <div class="couple-members">${ellaLine}${elLine}</div>
+        <span class="couple-status-badge ${statusCls}">${statusLbl}</span>
+        <span class="couple-chevron">▼</span>
+      </div>
+      <div class="couple-card-body">
+        <div class="couple-meta">
+          <span class="couple-meta-pill">📋 ${surveyCount} encuesta${surveyCount !== 1 ? 's' : ''}</span>
+          <span class="couple-meta-pill">📅 ${createdDate}</span>
+          <span class="couple-meta-pill" style="font-family:monospace;font-size:.65rem">${couple.id.slice(0,12)}…</span>
+        </div>
+        <div class="couple-actions">
+          <button class="btn btn-outline btn-sm btn-view-couple" data-couple-id="${couple.id}">📊 Ver encuestas</button>
+          <button class="btn btn-ghost-danger btn-sm btn-delete-couple" data-couple-id="${couple.id}">🗑 Eliminar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function _deleteCouple(coupleId) {
+  const surveysSnap = await db.collection('couples').doc(coupleId).collection('surveys').get();
+  const b1 = db.batch();
+  surveysSnap.docs.forEach(d => b1.delete(d.ref));
+  await b1.commit();
+
+  const cSnap = await db.collection('couples').doc(coupleId).get();
+  if (cSnap.exists) {
+    const c   = cSnap.data();
+    const b2  = db.batch();
+    [c.ellaUid, c.elUid].filter(Boolean).forEach(uid =>
+      b2.update(db.collection('users').doc(uid), { coupleId: null })
+    );
+    await b2.commit();
+  }
+  await db.collection('couples').doc(coupleId).delete();
+}
+
+function adminViewCoupleDashboard(coupleId) {
+  _adminPrevCoupleId = state.coupleId;
+  state.coupleId     = coupleId;
+  state.surveys      = null;
+
+  document.getElementById('dash-survey-btn').classList.add('hidden');
+  const logoutBtn = document.getElementById('dash-logout-btn');
+  logoutBtn.textContent = '← Admin';
+
+  goView('view-dashboard');
+}
+
+function _exitAdminCoupleView() {
+  state.coupleId     = _adminPrevCoupleId;
+  state.surveys      = null;
+  _adminPrevCoupleId = undefined;
+
+  document.getElementById('dash-survey-btn').classList.remove('hidden');
+  document.getElementById('dash-logout-btn').textContent = 'Salir';
+
+  goView('view-admin');
+  loadAdminPanel();
+}

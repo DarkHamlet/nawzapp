@@ -12,7 +12,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -182,7 +186,7 @@
       </div>
 
       <div class="thanks-actions">
-        <button class="btn btn-outline" onclick="goView('view-login')">Nueva encuesta</button>
+        <button class="btn btn-outline" onclick="startSurvey()">Nueva encuesta</button>
         <button class="btn btn-primary" onclick="goView('view-dashboard')">Ver Dashboard</button>
       </div>
 
@@ -217,7 +221,7 @@
       <div id="dash-empty" class="dash-empty hidden">
         <div class="empty-icon">🌸</div>
         <p>Aún no hay encuestas registradas.</p>
-        <button class="btn btn-primary" onclick="goView('view-login')">Ir a la encuesta</button>
+        <button class="btn btn-primary" onclick="startSurvey()">Ir a la encuesta</button>
       </div>
 
       <!-- Dashboard content -->
@@ -290,6 +294,7 @@
           <button class="btn btn-outline btn-sm" onclick="exportJSON()">⬇ Exportar JSON</button>
           <button class="btn btn-outline btn-sm" onclick="document.getElementById('imp-file').click()">⬆ Importar JSON</button>
           <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importJSON(event)">
+          <button class="btn btn-outline btn-sm" onclick="openImportLocalModal()">📱 Importar del dispositivo</button>
           <button class="btn btn-ghost-danger btn-sm" onclick="clearAllData()">🗑 Borrar todo</button>
         </div>
 
@@ -374,7 +379,8 @@
   </div>
 </div>
 
-<script src="decorations.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="firebase-config.js?v=1"></script>
+<script src="decorations.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

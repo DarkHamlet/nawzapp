@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/config/admin).data.email
+          == request.auth.token.email;
+    }
+
+    function isMember(coupleId) {
+      let c = get(/databases/$(database)/documents/couples/$(coupleId)).data;
+      return isAuth() &&
+        (request.auth.uid == c.get('ellaUid','') ||
+         request.auth.uid == c.get('elUid',''));
+    }
+
+    // ── Config (admin email) ──────────────────────────────
+    // Any auth user can read so the isAdmin() function works.
+    // Writes are done directly from the Firebase console.
+    match /config/{doc} {
+      allow read:  if isAuth();
+      allow write: if false;
+    }
+
+    // ── Users ─────────────────────────────────────────────
+    // Any auth user can read (needed for partner lookup at registration).
+    // Only the owner can create; owner or admin can update.
+    match /users/{uid} {
+      allow read:   if isAuth();
+      allow create: if isAuth() && request.auth.uid == uid;
+      allow update: if isAuth() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+
+      // Personal surveys (pre-couple / pending state)
+      match /surveys/{surveyId} {
+        allow read:   if isAuth() && request.auth.uid == uid || isAdmin();
+        allow create: if isAuth() && request.auth.uid == uid
+                         && request.resource.data.uid == uid;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ── Couples ───────────────────────────────────────────
+    match /couples/{coupleId} {
+      // Members or admin can read
+      allow read: if isMember(coupleId) || isAdmin();
+
+      // Any auth user can create a couple if their uid appears in it
+      allow create: if isAuth() && (
+        request.resource.data.get('ellaUid','') == request.auth.uid ||
+        request.resource.data.get('elUid','')   == request.auth.uid
+      );
+
+      // Members, admin, or the second person joining a pending couple
+      allow update: if isAdmin() || isMember(coupleId) || (
+        isAuth() &&
+        resource.data.status == 'pending' && (
+          request.resource.data.get('ellaUid','') == request.auth.uid ||
+          request.resource.data.get('elUid','')   == request.auth.uid
+        )
+      );
+
+      allow delete: if isAdmin();
+
+      // Couple surveys subcollection
+      match /surveys/{surveyId} {
+        allow read:   if isMember(coupleId) || isAdmin();
+        allow create: if isAuth() && isMember(coupleId)
+                         && request.resource.data.uid == request.auth.uid;
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}
