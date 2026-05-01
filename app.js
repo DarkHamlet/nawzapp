@@ -141,9 +141,23 @@ async function _loadProfile() {
   if (state.coupleId) {
     const cSnap = await db.collection('couples').doc(state.coupleId).get();
     state.couple = cSnap.exists ? cSnap.data() : null;
+    if (state.couple?.status === 'active') {
+      await _migratePendingSurveys(uid, state.coupleId);
+    }
   } else {
     state.couple = null;
   }
+}
+
+async function _migratePendingSurveys(uid, coupleId) {
+  const personalSnap = await db.collection('users').doc(uid).collection('surveys').get();
+  if (personalSnap.empty) return;
+  const batch = db.batch();
+  personalSnap.docs.forEach(s => {
+    batch.set(db.collection('couples').doc(coupleId).collection('surveys').doc(s.id), s.data());
+    batch.delete(s.ref);
+  });
+  await batch.commit();
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -331,17 +345,7 @@ async function _doRegister(name, email, pass, role, partnerEmail) {
         if (role === 'ella') { coupleUpdate.ellaUid = uid; coupleUpdate.ellaEmail = email; }
         else                 { coupleUpdate.elUid   = uid; coupleUpdate.elEmail   = email; }
         await db.collection('couples').doc(coupleId).update(coupleUpdate);
-
-        // Migrate partner's personal surveys → couple subcollection
-        const pendingSnap = await db.collection('users').doc(partnerDoc.id).collection('surveys').get();
-        if (!pendingSnap.empty) {
-          const batch = db.batch();
-          pendingSnap.docs.forEach(s => {
-            batch.set(db.collection('couples').doc(coupleId).collection('surveys').doc(s.id), s.data());
-            batch.delete(s.ref);
-          });
-          await batch.commit();
-        }
+        // Partner migrates their own surveys on next login (_loadProfile handles it)
       } else {
         // Partner exists but has no couple yet — create one linking both
         const coupleRef = db.collection('couples').doc();
@@ -357,7 +361,8 @@ async function _doRegister(name, email, pass, role, partnerEmail) {
         await coupleRef.set(coupleData);
       }
 
-      await db.collection('users').doc(partnerDoc.id).update({ coupleId });
+      // Best-effort: update partner's coupleId (already set in normal flow, skipped if permission fails)
+      try { await db.collection('users').doc(partnerDoc.id).update({ coupleId }); } catch {}
 
     } else {
       // Partner not found yet — create pending couple

@@ -41,7 +41,7 @@ service cloud.firestore {
         allow read:   if isAuth() && request.auth.uid == uid || isAdmin();
         allow create: if isAuth() && request.auth.uid == uid
                          && request.resource.data.uid == uid;
-        allow delete: if isAdmin();
+        allow delete: if isAdmin() || (isAuth() && request.auth.uid == uid);
       }
     }
 
