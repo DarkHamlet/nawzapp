@@ -23,9 +23,20 @@
 <div id="app">
 
   <!-- ════════════════════════════════════════
+       VIEW: LOADING
+  ════════════════════════════════════════ -->
+  <div id="view-loading" class="view active">
+    <div class="loading-wrap">
+      <div class="loading-petals">🌻</div>
+      <p class="loading-text">Cargando…</p>
+    </div>
+  </div><!-- /view-loading -->
+
+
+  <!-- ════════════════════════════════════════
        VIEW: LOGIN
   ════════════════════════════════════════ -->
-  <div id="view-login" class="view active">
+  <div id="view-login" class="view">
     <div class="login-wrap">
 
       <div class="logo-block">
@@ -49,7 +60,22 @@
           </div>
           <p id="login-error" class="error-msg hidden"></p>
           <button type="submit" class="btn btn-primary btn-full">Entrar &nbsp;💕</button>
+          <button type="button" class="link-btn" id="forgot-toggle-btn" style="margin-top:4px">¿Olvidaste tu contraseña?</button>
         </form>
+
+        <!-- Forgot password section (inline) -->
+        <div id="forgot-section" class="card login-card hidden" style="gap:12px">
+          <p style="font-size:.85rem;color:var(--text-soft);line-height:1.5">
+            Ingresá tu email y te enviamos un link para restablecer tu contraseña.
+          </p>
+          <div class="form-group">
+            <label for="forgot-email">Tu email</label>
+            <input type="email" id="forgot-email" placeholder="hola@ejemplo.com" autocomplete="email">
+          </div>
+          <p id="forgot-msg" class="hidden" style="font-size:.82rem;line-height:1.4;padding:8px 12px;border-radius:8px"></p>
+          <button class="btn btn-primary btn-full" id="forgot-send-btn">Enviar link 📧</button>
+          <button type="button" class="link-btn" id="forgot-back-btn">← Volver al login</button>
+        </div>
 
         <footer class="login-footer">
           <button class="link-btn" id="go-register-btn">¿Primera vez? Crear cuenta →</button>

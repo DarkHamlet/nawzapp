@@ -191,6 +191,55 @@ document.getElementById('eye-btn').addEventListener('click', () => {
 
 document.getElementById('go-register-btn').addEventListener('click', () => goView('view-register'));
 
+/* ── Olvidaste tu contraseña ─────────────────────────────── */
+const _forgotSection = document.getElementById('forgot-section');
+const _loginForm     = document.getElementById('login-form');
+
+document.getElementById('forgot-toggle-btn').addEventListener('click', () => {
+  _loginForm.classList.add('hidden');
+  _forgotSection.classList.remove('hidden');
+  document.getElementById('forgot-email').value =
+    document.getElementById('inp-email').value;
+  document.getElementById('forgot-msg').classList.add('hidden');
+});
+
+document.getElementById('forgot-back-btn').addEventListener('click', () => {
+  _forgotSection.classList.add('hidden');
+  _loginForm.classList.remove('hidden');
+});
+
+document.getElementById('forgot-send-btn').addEventListener('click', async () => {
+  const email = document.getElementById('forgot-email').value.trim();
+  const msgEl = document.getElementById('forgot-msg');
+  const btn   = document.getElementById('forgot-send-btn');
+
+  if (!email) {
+    _showForgotMsg('Ingresá tu email primero 📧', false);
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    await auth.sendPasswordResetEmail(email);
+    _showForgotMsg('¡Listo! Revisá tu casilla, te enviamos el link 💌', true);
+    btn.textContent = 'Enviado ✓';
+  } catch (err) {
+    const msg = err.code === 'auth/user-not-found'
+      ? 'No existe cuenta con ese email 🙈'
+      : 'Error al enviar. Verificá el email e intentá de nuevo.';
+    _showForgotMsg(msg, false);
+    btn.disabled = false;
+  }
+});
+
+function _showForgotMsg(text, isOk) {
+  const el = document.getElementById('forgot-msg');
+  el.textContent = text;
+  el.style.background = isOk ? 'var(--mint-bg)' : '#FFF1F2';
+  el.style.color      = isOk ? '#047857'         : '#E11D48';
+  el.classList.remove('hidden');
+}
+
 /* ══════════════════════════════════════════════════════════
    REGISTRO
 ══════════════════════════════════════════════════════════ */
