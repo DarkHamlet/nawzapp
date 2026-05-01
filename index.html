@@ -33,37 +33,97 @@
       <div class="login-form-wrap">
         <form id="login-form" class="card login-card" novalidate>
           <div class="form-group">
-            <label>¿Quién responde?</label>
-            <div class="role-selector">
-              <button type="button" class="role-btn" id="role-ella" data-role="ella">💗 Ella</button>
-              <button type="button" class="role-btn" id="role-el"   data-role="el">💙 Él</button>
-            </div>
+            <label for="inp-email">Tu email</label>
+            <input type="email" id="inp-email" placeholder="hola@ejemplo.com" autocomplete="email" required>
           </div>
           <div class="form-group">
-            <label for="inp-name">¿Cómo te llamas?</label>
-            <input type="text" id="inp-name" placeholder="Tu nombre ✨" autocomplete="name" required>
-          </div>
-          <div class="form-group">
-            <label for="inp-pass">Contraseña secreta</label>
+            <label for="inp-pass">Contraseña</label>
             <div class="input-eye-wrap">
               <input type="password" id="inp-pass" placeholder="••••••••" required>
               <button type="button" class="eye-btn" id="eye-btn" aria-label="Mostrar contraseña">👁</button>
             </div>
           </div>
-          <p id="login-error" class="error-msg hidden">Contraseña incorrecta 🙈 Inténtalo de nuevo.</p>
-          <p id="role-error" class="error-msg hidden">Por favor selecciona quién responde 💕</p>
-          <button type="submit" class="btn btn-primary btn-full">
-            Comenzar encuesta &nbsp;💕
-          </button>
+          <p id="login-error" class="error-msg hidden"></p>
+          <button type="submit" class="btn btn-primary btn-full">Entrar &nbsp;💕</button>
         </form>
 
         <footer class="login-footer">
-          <button class="link-btn" id="go-dashboard-btn">Ver Dashboard →</button>
+          <button class="link-btn" id="go-register-btn">¿Primera vez? Crear cuenta →</button>
         </footer>
       </div>
 
     </div>
   </div><!-- /view-login -->
+
+
+  <!-- ════════════════════════════════════════
+       VIEW: REGISTER
+  ════════════════════════════════════════ -->
+  <div id="view-register" class="view">
+    <div class="login-wrap">
+
+      <div class="logo-block">
+        <div class="logo-petals">🌸</div>
+        <h1 class="logo-name">Crear cuenta</h1>
+        <p class="logo-tagline">Uníos y comiencen a registrar<br>su bienestar juntos 💕</p>
+      </div>
+
+      <div class="login-form-wrap">
+        <form id="register-form" class="card login-card" novalidate>
+
+          <div class="form-group">
+            <label for="reg-name">¿Cómo te llamas?</label>
+            <input type="text" id="reg-name" placeholder="Tu nombre ✨" autocomplete="given-name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="reg-email">Tu email</label>
+            <input type="email" id="reg-email" placeholder="hola@ejemplo.com" autocomplete="email" required>
+          </div>
+
+          <div class="form-group">
+            <label for="reg-pass">Contraseña</label>
+            <div class="input-eye-wrap">
+              <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required>
+              <button type="button" class="eye-btn" id="reg-eye-btn" aria-label="Mostrar contraseña">👁</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="reg-pass2">Confirmar contraseña</label>
+            <div class="input-eye-wrap">
+              <input type="password" id="reg-pass2" placeholder="Repite tu contraseña" autocomplete="new-password" required>
+              <button type="button" class="eye-btn" id="reg-eye-btn2" aria-label="Mostrar contraseña">👁</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>¿Cuál es tu rol?</label>
+            <div class="role-selector">
+              <button type="button" class="role-btn" id="reg-role-ella" data-role="ella">💗 Ella</button>
+              <button type="button" class="role-btn" id="reg-role-el"   data-role="el">💙 Él</button>
+            </div>
+            <p class="field-hint">Tu rol queda fijo en tu perfil.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="reg-partner">Email de tu pareja</label>
+            <input type="email" id="reg-partner" placeholder="pareja@ejemplo.com" autocomplete="off" required>
+            <p class="field-hint">Cuando tu pareja se registre con tu email, quedarán enlazados automáticamente.</p>
+          </div>
+
+          <p id="register-error" class="error-msg hidden"></p>
+
+          <button type="submit" class="btn btn-primary btn-full">Crear mi cuenta 🌻</button>
+        </form>
+
+        <footer class="login-footer">
+          <button class="link-btn" id="go-login-btn">¿Ya tenés cuenta? Iniciar sesión →</button>
+        </footer>
+      </div>
+
+    </div>
+  </div><!-- /view-register -->
 
 
   <!-- ════════════════════════════════════════
@@ -139,9 +199,18 @@
       <div class="dash-header">
         <div>
           <h1 class="dash-title">📊 Dashboard</h1>
-          <p class="dash-subtitle">ÑawzApp · Métricas de relación</p>
+          <p class="dash-subtitle" id="dash-user-info">ÑawzApp · Métricas de relación</p>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="goView('view-login')">← Encuesta</button>
+        <div class="dash-header-actions">
+          <button class="btn btn-primary btn-sm" id="dash-survey-btn">Nueva encuesta 💕</button>
+          <button class="btn btn-outline btn-sm" id="dash-logout-btn">Salir</button>
+        </div>
+      </div>
+
+      <!-- Pending couple banner -->
+      <div id="couple-pending-banner" class="couple-pending-banner hidden">
+        <span class="pending-icon">⏳</span>
+        <span>Tu pareja aún no se ha registrado. Compartile el link de la app para que se una.</span>
       </div>
 
       <!-- Empty state -->
@@ -229,7 +298,81 @@
     </div>
   </div><!-- /view-dashboard -->
 
+  <!-- ════════════════════════════════════════
+       VIEW: ADMIN
+  ════════════════════════════════════════ -->
+  <div id="view-admin" class="view">
+    <div class="admin-wrap">
+
+      <div class="admin-header">
+        <div>
+          <h1 class="dash-title">🛡️ Panel Admin</h1>
+          <p class="dash-subtitle">ÑawzApp · Gestión de parejas y cuentas</p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="admin-logout-btn">Salir</button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="admin-stats">
+        <div class="stat-card">
+          <span class="stat-icon">💑</span>
+          <span class="stat-val" id="stat-total">—</span>
+          <span class="stat-lbl">parejas totales</span>
+        </div>
+        <div class="stat-card stat-card--active">
+          <span class="stat-icon">✅</span>
+          <span class="stat-val" id="stat-active">—</span>
+          <span class="stat-lbl">activas</span>
+        </div>
+        <div class="stat-card stat-card--pending">
+          <span class="stat-icon">⏳</span>
+          <span class="stat-val" id="stat-pending">—</span>
+          <span class="stat-lbl">esperando pareja</span>
+        </div>
+        <div class="stat-card stat-card--surveys">
+          <span class="stat-icon">📋</span>
+          <span class="stat-val" id="stat-surveys">—</span>
+          <span class="stat-lbl">encuestas totales</span>
+        </div>
+      </div>
+
+      <!-- Couples list -->
+      <div class="section-label">Parejas registradas</div>
+      <div id="admin-couples-list" class="admin-couples-list">
+        <!-- Injected by JS -->
+        <div class="admin-loading">Cargando parejas… 🌸</div>
+      </div>
+
+      <!-- Import from localStorage -->
+      <div class="section-label" style="margin-top:32px;">Herramientas</div>
+      <div class="admin-tools card">
+        <div class="admin-tool-row">
+          <div>
+            <strong>Importar datos del dispositivo</strong>
+            <p class="field-hint" style="margin-top:4px;">Sube al servidor las encuestas guardadas localmente en este navegador.</p>
+          </div>
+          <button class="btn btn-outline btn-sm" id="admin-import-local-btn">⬆ Importar localStorage</button>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /view-admin -->
+
 </div><!-- /app -->
+
+<!-- Import localStorage modal -->
+<div id="modal-import" class="modal-overlay hidden">
+  <div class="modal-box card">
+    <h3 class="modal-title">Importar encuestas locales 📂</h3>
+    <p class="modal-desc">Se encontraron <strong id="local-count">0</strong> encuestas en este dispositivo. Seleccioná cuáles querés subir a tu cuenta.</p>
+    <div id="local-surveys-list" class="local-surveys-list"></div>
+    <p id="import-error" class="error-msg hidden"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modal-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="modal-confirm-btn">Subir seleccionadas ☁️</button>
+    </div>
+  </div>
+</div>
 
 <script src="decorations.js?v=6"></script>
 <script src="app.js?v=6"></script>
