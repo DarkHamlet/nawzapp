@@ -28,7 +28,7 @@
 
 ÑawzApp es una aplicación web privada para parejas que quieren **medir y registrar su bienestar mensual** en cuatro dimensiones de la relación. Cada persona completa su propia encuesta, y juntos visualizan la evolución de su vínculo a lo largo del tiempo.
 
-Los datos son privados, compartidos únicamente entre los dos integrantes de cada pareja, y solo accesibles para el administrador de la app.
+Los datos son privados, compartidos únicamente entre los dos integrantes de cada pareja.
 
 <br>
 
